@@ -28,6 +28,7 @@ struct dma_map_ops *dma_ops;
 EXPORT_SYMBOL(dma_ops);
 
 /* Sanity check size */
+#ifdef CONFIG_MMU
 #if (CONSISTENT_DMA_SIZE % SZ_2M)
 #error "CONSISTENT_DMA_SIZE must be multiple of 2MiB"
 #endif
@@ -35,6 +36,7 @@ EXPORT_SYMBOL(dma_ops);
 #define CONSISTENT_OFFSET(x)	(((unsigned long)(x) - CONSISTENT_BASE) >> PAGE_SHIFT)
 #define CONSISTENT_PTE_INDEX(x) (((unsigned long)(x) - CONSISTENT_BASE) >> PGDIR_SHIFT)
 #define NUM_CONSISTENT_PTES (CONSISTENT_DMA_SIZE >> PGDIR_SHIFT)
+#endif
 
 static u64 get_coherent_dma_mask(struct device *dev)
 {

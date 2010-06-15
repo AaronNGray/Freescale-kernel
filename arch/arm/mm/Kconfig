@@ -599,6 +599,14 @@ config CPU_CP15_MPU
 	help
 	  Processor has the CP15 register, which has MPU related registers.
 
+config CPU_USE_DOMAINS
+	bool
+	depends on MMU
+	default y if !HAS_TLS_REG
+	help
+	  This option enables or disables the use of domain switching
+	  via the set_fs() function.
+
 #
 # CPU supports 36-bit I/O
 #
@@ -735,6 +743,25 @@ config NEEDS_SYSCALL_FOR_CMPXCHG
 	  Forget about fast user space cmpxchg support.
 	  It is just not possible.
 
+config DMA_CACHE_RWFO
+	bool "Enable read/write for ownership DMA cache maintenance"
+	depends on CPU_V6 && SMP
+	default y
+	help
+	  The Snoop Control Unit on ARM11MPCore does not detect the
+	  cache maintenance operations and the dma_{map,unmap}_area()
+	  functions may leave stale cache entries on other CPUs. By
+	  enabling this option, Read or Write For Ownership in the ARMv6
+	  DMA cache maintenance functions is performed. These LDR/STR
+	  instructions change the cache line state to shared or modified
+	  so that the cache operation has the desired effect.
+
+	  Note that the workaround is only valid on processors that do
+	  not perform speculative loads into the D-cache. For such
+	  processors, if cache maintenance operations are not broadcast
+	  in hardware, other workarounds are needed (e.g. cache
+	  maintenance broadcasting in software via FIQ).
+
 config OUTER_CACHE
 	bool
 
@@ -770,6 +797,13 @@ config CACHE_L2X0
 	help
 	  This option enables the L2x0 PrimeCell.
 
+config CACHE_PL310
+	bool
+	depends on CACHE_L2X0
+	default y if CPU_V7
+	help
+	  This option enables support for the PL310 cache controller.
+
 config CACHE_TAUROS2
 	bool "Enable the Tauros2 L2 cache controller"
 	depends on (ARCH_DOVE || ARCH_MMP)
@@ -794,6 +828,8 @@ config ARM_L1_CACHE_SHIFT
 
 config ARM_DMA_MEM_BUFFERABLE
 	bool "Use non-cacheable memory for DMA" if CPU_V6 && !CPU_V7
+	depends on !(MACH_REALVIEW_PB1176 || REALVIEW_EB_ARM11MP || \
+		     MACH_REALVIEW_PB11MP)
 	default y if CPU_V6 || CPU_V7
 	help
 	  Historically, the kernel has used strongly ordered mappings to
