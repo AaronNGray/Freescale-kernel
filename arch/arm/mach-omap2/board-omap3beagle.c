@@ -233,6 +233,7 @@ static struct regulator_consumer_supply beagle_vdac_supply =
 
 static struct regulator_consumer_supply beagle_vdvi_supplies[] = {
 	REGULATOR_SUPPLY("vdds_dsi", "omap_display"),
+	REGULATOR_SUPPLY("vdds_sdi", "omap_display"),
 	REGULATOR_SUPPLY("vdds_dsi", "omap_dsi1"),
 };
 
@@ -413,7 +414,6 @@ static struct regulator_init_data beagle_vdac = {
 /* VPLL2 for digital video outputs */
 static struct regulator_init_data beagle_vpll2 = {
 	.constraints = {
-		.name			= "VDVI",
 		.min_uV			= 1800000,
 		.max_uV			= 1800000,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
