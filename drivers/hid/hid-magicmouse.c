@@ -30,6 +30,21 @@ static bool emulate_scroll_wheel = true;
 module_param(emulate_scroll_wheel, bool, 0644);
 MODULE_PARM_DESC(emulate_scroll_wheel, "Emulate a scroll wheel");
 
+static unsigned int scroll_speed = 32;
+static int param_set_scroll_speed(const char *val, struct kernel_param *kp) {
+	unsigned long speed;
+	if (!val || strict_strtoul(val, 0, &speed) || speed > 63)
+		return -EINVAL;
+	scroll_speed = speed;
+	return 0;
+}
+module_param_call(scroll_speed, param_set_scroll_speed, param_get_uint, &scroll_speed, 0644);
+MODULE_PARM_DESC(scroll_speed, "Scroll speed, value from 0 (slow) to 63 (fast)");
+
+static bool scroll_acceleration = false;
+module_param(scroll_acceleration, bool, 0644);
+MODULE_PARM_DESC(scroll_acceleration, "Accelerate sequential scroll events");
+
 static bool report_touches = true;
 module_param(report_touches, bool, 0644);
 MODULE_PARM_DESC(report_touches, "Emit touch records (otherwise, only use them for emulation)");
@@ -49,6 +64,8 @@ MODULE_PARM_DESC(report_undeciphered, "Report undeciphered multi-touch state fie
 #define TOUCH_STATE_NONE  0x00
 #define TOUCH_STATE_START 0x30
 #define TOUCH_STATE_DRAG  0x40
+
+#define SCROLL_ACCEL_DEFAULT 7
 
 /**
  * struct magicmouse_sc - Tracks Magic Mouse-specific data.
@@ -78,6 +95,7 @@ struct magicmouse_sc {
 	struct {
 		short x;
 		short y;
+		short scroll_x;
 		short scroll_y;
 		u8 size;
 	} touches[16];
@@ -141,7 +159,7 @@ static void magicmouse_emit_buttons(struct magicmouse_sc *msc, int state)
 	input_report_key(msc->input, BTN_RIGHT, state & 2);
 
 	if (state != last_state)
-		msc->scroll_accel = 0;
+		msc->scroll_accel = SCROLL_ACCEL_DEFAULT;
 }
 
 static void magicmouse_emit_touch(struct magicmouse_sc *msc, int raw_id, u8 *tdata)
@@ -160,33 +178,43 @@ static void magicmouse_emit_touch(struct magicmouse_sc *msc, int raw_id, u8 *tda
 	msc->touches[id].size = misc & 63;
 
 	/* If requested, emulate a scroll wheel by detecting small
-	 * vertical touch motions along the middle of the mouse.
+	 * vertical touch motions.
 	 */
-	if (emulate_scroll_wheel &&
-	    middle_button_start < x && x < middle_button_stop) {
-		static const int accel_profile[] = {
-			256, 228, 192, 160, 128, 96, 64, 32,
-		};
+	if (emulate_scroll_wheel) {
 		unsigned long now = jiffies;
-		int step = msc->touches[id].scroll_y - y;
-
-		/* Reset acceleration after half a second. */
-		if (time_after(now, msc->scroll_jiffies + HZ / 2))
-			msc->scroll_accel = 0;
+		int step_x = msc->touches[id].scroll_x - x;
+		int step_y = msc->touches[id].scroll_y - y;
 
 		/* Calculate and apply the scroll motion. */
 		switch (tdata[7] & TOUCH_STATE_MASK) {
 		case TOUCH_STATE_START:
+			msc->touches[id].scroll_x = x;
 			msc->touches[id].scroll_y = y;
-			msc->scroll_accel = min_t(int, msc->scroll_accel + 1,
-						ARRAY_SIZE(accel_profile) - 1);
+
+			/* Reset acceleration after half a second. */
+			if (scroll_acceleration && time_before(now,
+						msc->scroll_jiffies + HZ / 2))
+				msc->scroll_accel = max_t(int,
+						msc->scroll_accel - 1, 1);
+			else
+				msc->scroll_accel = SCROLL_ACCEL_DEFAULT;
+
 			break;
 		case TOUCH_STATE_DRAG:
-			step = step / accel_profile[msc->scroll_accel];
-			if (step != 0) {
-				msc->touches[id].scroll_y = y;
+			step_x /= (64 - (int)scroll_speed) * msc->scroll_accel;
+			if (step_x != 0) {
+				msc->touches[id].scroll_x -= step_x *
+					(64 - scroll_speed) * msc->scroll_accel;
 				msc->scroll_jiffies = now;
-				input_report_rel(input, REL_WHEEL, step);
+				input_report_rel(input, REL_HWHEEL, -step_x);
+			}
+
+			step_y /= (64 - (int)scroll_speed) * msc->scroll_accel;
+			if (step_y != 0) {
+				msc->touches[id].scroll_y -= step_y *
+					(64 - scroll_speed) * msc->scroll_accel;
+				msc->scroll_jiffies = now;
+				input_report_rel(input, REL_WHEEL, step_y);
 			}
 			break;
 		}
@@ -301,8 +329,10 @@ static void magicmouse_setup_input(struct input_dev *input, struct hid_device *h
 	__set_bit(EV_REL, input->evbit);
 	__set_bit(REL_X, input->relbit);
 	__set_bit(REL_Y, input->relbit);
-	if (emulate_scroll_wheel)
+	if (emulate_scroll_wheel) {
 		__set_bit(REL_WHEEL, input->relbit);
+		__set_bit(REL_HWHEEL, input->relbit);
+	}
 
 	if (report_touches) {
 		__set_bit(EV_ABS, input->evbit);
@@ -344,6 +374,8 @@ static int magicmouse_probe(struct hid_device *hdev,
 		dev_err(&hdev->dev, "can't alloc magicmouse descriptor\n");
 		return -ENOMEM;
 	}
+
+	msc->scroll_accel = SCROLL_ACCEL_DEFAULT;
 
 	msc->quirks = id->driver_data;
 	hid_set_drvdata(hdev, msc);
