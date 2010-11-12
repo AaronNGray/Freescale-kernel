@@ -513,6 +513,7 @@ static struct regulator_init_data omap3_evm_vdac = {
 /* VPLL2 for digital video outputs */
 static struct regulator_consumer_supply omap3_evm_vpll2_supplies[] = {
 	REGULATOR_SUPPLY("vdds_dsi", "omap_display"),
+	REGULATOR_SUPPLY("vdds_sdi", "omap_display"),
 	REGULATOR_SUPPLY("vdds_dsi", "omap_dsi1"),
 };
 
