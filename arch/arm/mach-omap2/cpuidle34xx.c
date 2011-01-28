@@ -481,7 +481,7 @@ void omap_init_power_states(void)
 		omap3_power_states[OMAP3_STATE_C7].valid = 0;
 		omap3_power_states[OMAP3_STATE_C7].enabled = 0;
 		cpuidle_params_table[OMAP3_STATE_C7].valid = 0;
-		WARN_ONCE(1, "%s: core off state C7 disabled due to i583\n",
+		pr_warning("%s: core off state C7 disabled due to i583\n",
 				__func__);
 	}
 }
