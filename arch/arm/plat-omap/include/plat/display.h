@@ -23,6 +23,7 @@
 #include <linux/list.h>
 #include <linux/kobject.h>
 #include <linux/device.h>
+#include <linux/platform_device.h>
 #include <asm/atomic.h>
 
 #define DISPC_IRQ_FRAMEDONE		(1 << 0)
@@ -42,6 +43,10 @@
 #define DISPC_IRQ_SYNC_LOST		(1 << 14)
 #define DISPC_IRQ_SYNC_LOST_DIGIT	(1 << 15)
 #define DISPC_IRQ_WAKEUP		(1 << 16)
+#define DISPC_IRQ_SYNC_LOST2		(1 << 17)
+#define DISPC_IRQ_VSYNC2		(1 << 18)
+#define DISPC_IRQ_ACBIAS_COUNT_STAT2	(1 << 21)
+#define DISPC_IRQ_FRAMEDONE2		(1 << 22)
 
 struct omap_dss_device;
 struct omap_overlay_manager;
@@ -64,6 +69,7 @@ enum omap_plane {
 enum omap_channel {
 	OMAP_DSS_CHANNEL_LCD	= 0,
 	OMAP_DSS_CHANNEL_DIGIT	= 1,
+	OMAP_DSS_CHANNEL_LCD2	= 2,
 };
 
 enum omap_color_mode {
@@ -142,6 +148,7 @@ enum omap_dss_display_state {
 enum omap_dss_overlay_managers {
 	OMAP_DSS_OVL_MGR_LCD,
 	OMAP_DSS_OVL_MGR_TV,
+	OMAP_DSS_OVL_MGR_LCD2,
 };
 
 enum omap_dss_rotation_type {
@@ -220,6 +227,21 @@ struct omap_dss_board_info {
 	struct omap_dss_device *default_device;
 };
 
+#if defined(CONFIG_OMAP2_DSS_MODULE) || defined(CONFIG_OMAP2_DSS)
+/* Init with the board info */
+extern int omap_display_init(struct omap_dss_board_info *board_data);
+#else
+static inline int omap_display_init(struct omap_dss_board_info *board_data)
+{
+	return 0;
+}
+#endif
+
+struct omap_display_platform_data {
+	struct omap_dss_board_info *board_data;
+	/* TODO: Additional members to be added when PM is considered */
+};
+
 struct omap_video_timings {
 	/* Unit: pixels */
 	u16 x_res;
@@ -268,6 +290,7 @@ struct omap_overlay_info {
 	u16 out_width;	/* if 0, out_width == width */
 	u16 out_height;	/* if 0, out_height == height */
 	u8 global_alpha;
+	u8 pre_mult_alpha;
 };
 
 struct omap_overlay {
@@ -350,6 +373,8 @@ struct omap_dss_device {
 	struct device dev;
 
 	enum omap_display_type type;
+
+	enum omap_channel channel;
 
 	union {
 		struct {

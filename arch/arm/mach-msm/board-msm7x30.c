@@ -22,14 +22,15 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/smsc911x.h>
+#include <linux/usb/msm_hsusb.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/memory.h>
 #include <asm/setup.h>
 
 #include <mach/gpio.h>
 #include <mach/board.h>
-#include <mach/memory.h>
 #include <mach/msm_iomap.h>
 #include <mach/dma.h>
 
@@ -39,11 +40,26 @@
 
 extern struct sys_timer msm_timer;
 
+static int hsusb_phy_init_seq[] = {
+	0x30, 0x32,	/* Enable and set Pre-Emphasis Depth to 20% */
+	0x02, 0x36,	/* Disable CDR Auto Reset feature */
+	-1
+};
+
+static struct msm_otg_platform_data msm_otg_pdata = {
+	.phy_init_seq		= hsusb_phy_init_seq,
+	.mode                   = USB_PERIPHERAL,
+	.otg_control		= OTG_PHY_CONTROL,
+};
+
 static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_SERIAL_MSM) || defined(CONFIG_MSM_SERIAL_DEBUGGER)
         &msm_device_uart2,
 #endif
 	&msm_device_smd,
+	&msm_device_otg,
+	&msm_device_hsusb,
+	&msm_device_hsusb_host,
 };
 
 static void __init msm7x30_init_irq(void)
@@ -53,6 +69,10 @@ static void __init msm7x30_init_irq(void)
 
 static void __init msm7x30_init(void)
 {
+	msm_device_otg.dev.platform_data = &msm_otg_pdata;
+	msm_device_hsusb.dev.parent = &msm_device_otg.dev;
+	msm_device_hsusb_host.dev.parent = &msm_device_otg.dev;
+
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 }
 
@@ -65,7 +85,7 @@ static void __init msm7x30_map_io(void)
 MACHINE_START(MSM7X30_SURF, "QCT MSM7X30 SURF")
 #ifdef CONFIG_MSM_DEBUG_UART
 #endif
-	.boot_params = PHYS_OFFSET + 0x100,
+	.boot_params = PLAT_PHYS_OFFSET + 0x100,
 	.map_io = msm7x30_map_io,
 	.init_irq = msm7x30_init_irq,
 	.init_machine = msm7x30_init,
@@ -75,7 +95,7 @@ MACHINE_END
 MACHINE_START(MSM7X30_FFA, "QCT MSM7X30 FFA")
 #ifdef CONFIG_MSM_DEBUG_UART
 #endif
-	.boot_params = PHYS_OFFSET + 0x100,
+	.boot_params = PLAT_PHYS_OFFSET + 0x100,
 	.map_io = msm7x30_map_io,
 	.init_irq = msm7x30_init_irq,
 	.init_machine = msm7x30_init,
@@ -85,7 +105,7 @@ MACHINE_END
 MACHINE_START(MSM7X30_FLUID, "QCT MSM7X30 FLUID")
 #ifdef CONFIG_MSM_DEBUG_UART
 #endif
-	.boot_params = PHYS_OFFSET + 0x100,
+	.boot_params = PLAT_PHYS_OFFSET + 0x100,
 	.map_io = msm7x30_map_io,
 	.init_irq = msm7x30_init_irq,
 	.init_machine = msm7x30_init,

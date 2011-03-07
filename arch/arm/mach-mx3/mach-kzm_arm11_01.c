@@ -27,6 +27,7 @@
 
 #include <asm/irq.h>
 #include <asm/mach-types.h>
+#include <asm/memory.h>
 #include <asm/setup.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/irq.h>
@@ -36,14 +37,13 @@
 #include <mach/clock.h>
 #include <mach/common.h>
 #include <mach/iomux-mx3.h>
-#include <mach/memory.h>
 
 #include "devices-imx31.h"
 #include "devices.h"
 
-#define KZM_ARM11_IO_ADDRESS(x) (					\
-	IMX_IO_ADDRESS(x, MX31_CS4) ?:					\
-	IMX_IO_ADDRESS(x, MX31_CS5) ?:					\
+#define KZM_ARM11_IO_ADDRESS(x) (IOMEM(					\
+	IMX_IO_P2V_MODULE(x, MX31_CS4) ?:				\
+	IMX_IO_P2V_MODULE(x, MX31_CS5)) ?:				\
 	MX31_IO_ADDRESS(x))
 
 /*

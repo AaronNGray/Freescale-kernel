@@ -19,6 +19,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/leds.h>
 #include <linux/gpio.h>
@@ -36,10 +37,12 @@
 #include <plat/common.h>
 #include <plat/usb.h>
 #include <plat/mmc.h>
+#include <plat/panel-generic-dpi.h>
 #include "timer-gp.h"
 
 #include "hsmmc.h"
 #include "control.h"
+#include "mux.h"
 
 #define GPIO_HUB_POWER		1
 #define GPIO_HUB_NRESET		62
@@ -74,11 +77,65 @@ static struct platform_device *panda_devices[] __initdata = {
 	&leds_gpio,
 };
 
+/* Display DVI */
+#define PANDA_DVI_TFP410_POWER_DOWN_GPIO	0
+
+static int panda_enable_dvi(struct omap_dss_device *dssdev)
+{
+	gpio_set_value(dssdev->reset_gpio, 1);
+	return 0;
+}
+
+static void panda_disable_dvi(struct omap_dss_device *dssdev)
+{
+	gpio_set_value(dssdev->reset_gpio, 0);
+}
+
+/* Using generic display panel */
+static struct panel_generic_dpi_data dvi_panel = {
+	.name			= "generic",
+	.platform_enable	= panda_enable_dvi,
+	.platform_disable	= panda_disable_dvi,
+};
+
+struct omap_dss_device panda_dvi_device = {
+	.type			= OMAP_DISPLAY_TYPE_DPI,
+	.name			= "dvi",
+	.driver_name		= "generic_dpi_panel",
+	.data			= &dvi_panel,
+	.phy.dpi.data_lines	= 24,
+	.reset_gpio		= PANDA_DVI_TFP410_POWER_DOWN_GPIO,
+	.channel		= OMAP_DSS_CHANNEL_LCD2,
+};
+
+int __init panda_dvi_init(void)
+{
+	int r;
+
+	/* Requesting TFP410 DVI GPIO and disabling it, at bootup */
+	r = gpio_request_one(panda_dvi_device.reset_gpio,
+				GPIOF_OUT_INIT_LOW, "DVI PD");
+	if (r)
+		pr_err("Failed to get DVI powerdown GPIO\n");
+
+	return r;
+}
+
+static struct omap_dss_device *panda_dss_devices[] = {
+	&panda_dvi_device,
+};
+
+static struct omap_dss_board_info panda_dss_data = {
+	.num_devices	= ARRAY_SIZE(panda_dss_devices),
+	.devices	= panda_dss_devices,
+	.default_device	= &panda_dvi_device,
+};
+
 static void __init omap4_panda_init_irq(void)
 {
-	omap2_init_common_hw(NULL, NULL);
+	omap2_init_common_infrastructure();
+	omap2_init_common_devices(NULL, NULL);
 	gic_init_irq();
-	omap_gpio_init();
 }
 
 static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
@@ -94,7 +151,16 @@ static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 static void __init omap4_ehci_init(void)
 {
 	int ret;
+	struct clk *phy_ref_clk;
 
+	/* FREF_CLK3 provides the 19.2 MHz reference clock to the PHY */
+	phy_ref_clk = clk_get(NULL, "auxclk3_ck");
+	if (IS_ERR(phy_ref_clk)) {
+		pr_err("Cannot request auxclk3\n");
+		goto error1;
+	}
+	clk_set_rate(phy_ref_clk, 19200000);
+	clk_enable(phy_ref_clk);
 
 	/* disable the power to the usb hub prior to init */
 	ret = gpio_request(GPIO_HUB_POWER, "hub_power");
@@ -133,8 +199,15 @@ error1:
 
 static struct omap_musb_board_data musb_board_data = {
 	.interface_type		= MUSB_INTERFACE_UTMI,
-	.mode			= MUSB_PERIPHERAL,
+	.mode			= MUSB_OTG,
 	.power			= 100,
+};
+
+static struct twl4030_usb_data omap4_usbphy_data = {
+	.phy_init	= omap4430_phy_init,
+	.phy_exit	= omap4430_phy_exit,
+	.phy_power	= omap4430_phy_power,
+	.phy_set_clock	= omap4430_phy_set_clk,
 };
 
 static struct omap2_hsmmc_info mmc[] = {
@@ -142,6 +215,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.mmc		= 1,
 		.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA,
 		.gpio_wp	= -EINVAL,
+		.gpio_cd	= -EINVAL,
 	},
 	{}	/* Terminator */
 };
@@ -345,6 +419,7 @@ static struct twl4030_platform_data omap4_panda_twldata = {
 	.vaux1		= &omap4_panda_vaux1,
 	.vaux2		= &omap4_panda_vaux2,
 	.vaux3		= &omap4_panda_vaux3,
+	.usb		= &omap4_usbphy_data,
 };
 
 static struct i2c_board_info __initdata omap4_panda_i2c_boardinfo[] = {
@@ -355,6 +430,17 @@ static struct i2c_board_info __initdata omap4_panda_i2c_boardinfo[] = {
 		.platform_data = &omap4_panda_twldata,
 	},
 };
+
+/*
+ * Display monitor features are burnt in their EEPROM as EDID data. The EEPROM
+ * is connected as I2C slave device, and can be accessed at address 0x50
+ */
+static struct i2c_board_info __initdata panda_i2c_eeprom[] = {
+	{
+		I2C_BOARD_INFO("eeprom", 0x50),
+	},
+};
+
 static int __init omap4_panda_i2c_init(void)
 {
 	/*
@@ -364,22 +450,102 @@ static int __init omap4_panda_i2c_init(void)
 	omap_register_i2c_bus(1, 400, omap4_panda_i2c_boardinfo,
 			ARRAY_SIZE(omap4_panda_i2c_boardinfo));
 	omap_register_i2c_bus(2, 400, NULL, 0);
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	/*
+	 * Bus 3 is attached to the DVI port where devices like the pico DLP
+	 * projector don't work reliably with 400kHz
+	 */
+	omap_register_i2c_bus(3, 100, panda_i2c_eeprom,
+					ARRAY_SIZE(panda_i2c_eeprom));
 	omap_register_i2c_bus(4, 400, NULL, 0);
 	return 0;
 }
+
+#ifdef CONFIG_OMAP_MUX
+static struct omap_board_mux board_mux[] __initdata = {
+	/* gpio 0 - TFP410 PD */
+	OMAP4_MUX(KPD_COL1, OMAP_PIN_OUTPUT | OMAP_MUX_MODE3),
+	/* dispc2_data23 */
+	OMAP4_MUX(USBB2_ULPITLL_STP, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data22 */
+	OMAP4_MUX(USBB2_ULPITLL_DIR, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data21 */
+	OMAP4_MUX(USBB2_ULPITLL_NXT, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data20 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT0, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data19 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT1, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data18 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT2, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data15 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT3, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data14 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT4, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data13 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT5, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data12 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT6, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data11 */
+	OMAP4_MUX(USBB2_ULPITLL_DAT7, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data10 */
+	OMAP4_MUX(DPM_EMU3, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data9 */
+	OMAP4_MUX(DPM_EMU4, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data16 */
+	OMAP4_MUX(DPM_EMU5, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data17 */
+	OMAP4_MUX(DPM_EMU6, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_hsync */
+	OMAP4_MUX(DPM_EMU7, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_pclk */
+	OMAP4_MUX(DPM_EMU8, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_vsync */
+	OMAP4_MUX(DPM_EMU9, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_de */
+	OMAP4_MUX(DPM_EMU10, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data8 */
+	OMAP4_MUX(DPM_EMU11, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data7 */
+	OMAP4_MUX(DPM_EMU12, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data6 */
+	OMAP4_MUX(DPM_EMU13, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data5 */
+	OMAP4_MUX(DPM_EMU14, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data4 */
+	OMAP4_MUX(DPM_EMU15, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data3 */
+	OMAP4_MUX(DPM_EMU16, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data2 */
+	OMAP4_MUX(DPM_EMU17, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data1 */
+	OMAP4_MUX(DPM_EMU18, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	/* dispc2_data0 */
+	OMAP4_MUX(DPM_EMU19, OMAP_PIN_OUTPUT | OMAP_MUX_MODE5),
+	{ .reg_offset = OMAP_MUX_TERMINATOR },
+};
+#else
+#define board_mux	NULL
+#endif
+
 static void __init omap4_panda_init(void)
 {
+	int package = OMAP_PACKAGE_CBS;
+	int err;
+
+	if (omap_rev() == OMAP4430_REV_ES1_0)
+		package = OMAP_PACKAGE_CBL;
+	omap4_mux_init(board_mux, package);
+
 	omap4_panda_i2c_init();
 	platform_add_devices(panda_devices, ARRAY_SIZE(panda_devices));
 	omap_serial_init();
 	omap4_twl6030_hsmmc_init(mmc);
-	/* OMAP4 Panda uses internal transceiver so register nop transceiver */
-	usb_nop_xceiv_register();
 	omap4_ehci_init();
-	/* FIXME: allow multi-omap to boot until musb is updated for omap4 */
-	if (!cpu_is_omap44xx())
-		usb_musb_init(&musb_board_data);
+	usb_musb_init(&musb_board_data);
+
+	/* Enabling DVI Display */
+	err = panda_dvi_init();
+	if (!err)
+		omap_display_init(&panda_dss_data);
 }
 
 static void __init omap4_panda_map_io(void)
@@ -391,6 +557,7 @@ static void __init omap4_panda_map_io(void)
 MACHINE_START(OMAP4_PANDA, "OMAP4 Panda board")
 	/* Maintainer: David Anders - Texas Instruments Inc */
 	.boot_params	= 0x80000100,
+	.reserve	= omap_reserve,
 	.map_io		= omap4_panda_map_io,
 	.init_irq	= omap4_panda_init_irq,
 	.init_machine	= omap4_panda_init,

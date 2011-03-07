@@ -40,6 +40,7 @@
 #include <plat/nand.h>
 #include <plat/usb.h>
 #include <plat/display.h>
+#include <plat/panel-generic-dpi.h>
 
 #include <plat/mcspi.h>
 #include <linux/input/matrix_keypad.h>
@@ -160,13 +161,18 @@ static void omap3_stalker_disable_lcd(struct omap_dss_device *dssdev)
 	lcd_enabled = 0;
 }
 
-static struct omap_dss_device omap3_stalker_lcd_device = {
-	.name			= "lcd",
-	.driver_name		= "generic_panel",
-	.phy.dpi.data_lines	= 24,
-	.type			= OMAP_DISPLAY_TYPE_DPI,
+static struct panel_generic_dpi_data lcd_panel = {
+	.name			= "generic",
 	.platform_enable	= omap3_stalker_enable_lcd,
 	.platform_disable	= omap3_stalker_disable_lcd,
+};
+
+static struct omap_dss_device omap3_stalker_lcd_device = {
+	.name			= "lcd",
+	.driver_name		= "generic_dpi_panel",
+	.data			= &lcd_panel,
+	.phy.dpi.data_lines	= 24,
+	.type			= OMAP_DISPLAY_TYPE_DPI,
 };
 
 static int omap3_stalker_enable_tv(struct omap_dss_device *dssdev)
@@ -208,13 +214,18 @@ static void omap3_stalker_disable_dvi(struct omap_dss_device *dssdev)
 	dvi_enabled = 0;
 }
 
-static struct omap_dss_device omap3_stalker_dvi_device = {
-	.name			= "dvi",
-	.driver_name		= "generic_panel",
-	.type			= OMAP_DISPLAY_TYPE_DPI,
-	.phy.dpi.data_lines	= 24,
+static struct panel_generic_dpi_data dvi_panel = {
+	.name			= "generic",
 	.platform_enable	= omap3_stalker_enable_dvi,
 	.platform_disable	= omap3_stalker_disable_dvi,
+};
+
+static struct omap_dss_device omap3_stalker_dvi_device = {
+	.name			= "dvi",
+	.type			= OMAP_DISPLAY_TYPE_DPI,
+	.driver_name		= "generic_dpi_panel",
+	.data			= &dvi_panel,
+	.phy.dpi.data_lines	= 24,
 };
 
 static struct omap_dss_device *omap3_stalker_dss_devices[] = {
@@ -227,14 +238,6 @@ static struct omap_dss_board_info omap3_stalker_dss_data = {
 	.num_devices	= ARRAY_SIZE(omap3_stalker_dss_devices),
 	.devices	= omap3_stalker_dss_devices,
 	.default_device	= &omap3_stalker_dvi_device,
-};
-
-static struct platform_device omap3_stalker_dss_device = {
-	.name	= "omapdss",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &omap3_stalker_dss_data,
-	},
 };
 
 static struct regulator_consumer_supply omap3stalker_vmmc1_supply = {
@@ -437,10 +440,8 @@ static struct twl4030_codec_data omap3stalker_codec_data = {
 	.audio		= &omap3stalker_audio_data,
 };
 
-static struct regulator_consumer_supply omap3_stalker_vdda_dac_supply = {
-	.supply		= "vdda_dac",
-	.dev		= &omap3_stalker_dss_device.dev,
-};
+static struct regulator_consumer_supply omap3_stalker_vdda_dac_supply =
+	REGULATOR_SUPPLY("vdda_dac", "omap_venc");
 
 /* VDAC for DSS driving S-Video */
 static struct regulator_init_data omap3_stalker_vdac = {
@@ -458,9 +459,9 @@ static struct regulator_init_data omap3_stalker_vdac = {
 };
 
 /* VPLL2 for digital video outputs */
-static struct regulator_consumer_supply omap3_stalker_vpll2_supply = {
-	.supply		= "vdds_dsi",
-	.dev		= &omap3_stalker_lcd_device.dev,
+static struct regulator_consumer_supply omap3_stalker_vpll2_supplies[] = {
+	REGULATOR_SUPPLY("vdds_dsi", "omap_display"),
+	REGULATOR_SUPPLY("vdds_dsi", "omap_dsi1"),
 };
 
 static struct regulator_init_data omap3_stalker_vpll2 = {
@@ -474,8 +475,8 @@ static struct regulator_init_data omap3_stalker_vpll2 = {
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
 		| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies	= 1,
-	.consumer_supplies	= &omap3_stalker_vpll2_supply,
+	.num_consumer_supplies	= ARRAY_SIZE(omap3_stalker_vpll2_supplies),
+	.consumer_supplies	= omap3_stalker_vpll2_supplies,
 };
 
 static struct twl4030_platform_data omap3stalker_twldata = {
@@ -584,16 +585,15 @@ static void __init omap3_stalker_init_irq(void)
 {
 	omap_board_config = omap3_stalker_config;
 	omap_board_config_size = ARRAY_SIZE(omap3_stalker_config);
-	omap2_init_common_hw(mt46h32m32lf6_sdrc_params, NULL);
+	omap2_init_common_infrastructure();
+	omap2_init_common_devices(mt46h32m32lf6_sdrc_params, NULL);
 	omap_init_irq();
 #ifdef CONFIG_OMAP_32K_TIMER
 	omap2_gp_clockevent_set_gptimer(12);
 #endif
-	omap_gpio_init();
 }
 
 static struct platform_device *omap3_stalker_devices[] __initdata = {
-	&omap3_stalker_dss_device,
 	&keys_gpio,
 };
 
@@ -616,8 +616,6 @@ static struct omap_board_mux board_mux[] __initdata = {
 		  OMAP_PIN_OFF_INPUT_PULLUP | OMAP_PIN_OFF_WAKEUPENABLE),
 	{.reg_offset = OMAP_MUX_TERMINATOR},
 };
-#else
-#define board_mux	NULL
 #endif
 
 static struct omap_musb_board_data musb_board_data = {
@@ -635,6 +633,7 @@ static void __init omap3_stalker_init(void)
 	platform_add_devices(omap3_stalker_devices,
 			     ARRAY_SIZE(omap3_stalker_devices));
 
+	omap_display_init(&omap3_stalker_dss_data);
 	spi_register_board_info(omap3stalker_spi_board_info,
 				ARRAY_SIZE(omap3stalker_spi_board_info));
 

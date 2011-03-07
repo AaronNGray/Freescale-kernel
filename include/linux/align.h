@@ -24,6 +24,12 @@
 #define object_align(obj)	PTR_ALIGN(obj, __alignof__(*(obj)))
 #define object_align_floor(obj)	PTR_ALIGN_FLOOR(obj, __alignof__(*(obj)))
 
+#define MAYBE_BUILD_BUG_ON(condition)           \
+do {                                            \
+        if (__builtin_constant_p(condition))    \
+                BUILD_BUG_ON(condition);        \
+} while (0)
+
 /**
  * offset_align - Calculate the offset needed to align an object on its natural
  *                alignment towards higher addresses.

@@ -94,18 +94,6 @@ struct tvec_base boot_tvec_bases;
 EXPORT_SYMBOL(boot_tvec_bases);
 static DEFINE_PER_CPU(struct tvec_base *, tvec_bases) = &boot_tvec_bases;
 
-/*
- * Note that all tvec_bases are 2 byte aligned and lower bit of
- * base in timer_list is guaranteed to be zero. Use the LSB to
- * indicate whether the timer is deferrable.
- *
- * A deferrable timer will work normally when the system is busy, but
- * will not cause a CPU to come out of idle just to service it; instead,
- * the timer will be serviced when the CPU eventually wakes up with a
- * subsequent non-deferrable timer.
- */
-#define TBASE_DEFERRABLE_FLAG		(0x1)
-
 /* Functions below help us manage 'deferrable' flag */
 static inline unsigned int tbase_get_deferrable(struct tvec_base *base)
 {
@@ -119,8 +107,7 @@ static inline struct tvec_base *tbase_get_base(struct tvec_base *base)
 
 static inline void timer_set_deferrable(struct timer_list *timer)
 {
-	timer->base = ((struct tvec_base *)((unsigned long)(timer->base) |
-				       TBASE_DEFERRABLE_FLAG));
+	timer->base = TBASE_MAKE_DEFERRED(timer->base);
 }
 
 static inline void
@@ -348,15 +335,6 @@ void set_timer_slack(struct timer_list *timer, int slack_hz)
 	timer->slack = slack_hz;
 }
 EXPORT_SYMBOL_GPL(set_timer_slack);
-
-
-static inline void set_running_timer(struct tvec_base *base,
-					struct timer_list *timer)
-{
-#ifdef CONFIG_SMP
-	base->running_timer = timer;
-#endif
-}
 
 static void internal_add_timer(struct tvec_base *base, struct timer_list *timer)
 {
@@ -943,15 +921,12 @@ int del_timer(struct timer_list *timer)
 }
 EXPORT_SYMBOL(del_timer);
 
-#ifdef CONFIG_SMP
 /**
  * try_to_del_timer_sync - Try to deactivate a timer
  * @timer: timer do del
  *
  * This function tries to deactivate a timer. Upon successful (ret >= 0)
  * exit the timer is not queued and the handler is not running on any CPU.
- *
- * It must not be called from interrupt contexts.
  */
 int try_to_del_timer_sync(struct timer_list *timer)
 {
@@ -980,6 +955,7 @@ out:
 }
 EXPORT_SYMBOL(try_to_del_timer_sync);
 
+#ifdef CONFIG_SMP
 /**
  * del_timer_sync - deactivate a timer and wait for the handler to finish.
  * @timer: the timer to be deactivated
@@ -1007,7 +983,11 @@ int del_timer_sync(struct timer_list *timer)
 	lock_map_release(&timer->lockdep_map);
 	local_irq_restore(flags);
 #endif
-
+	/*
+	 * don't use it in hardirq context, because it
+	 * could lead to deadlock.
+	 */
+	WARN_ON(in_irq());
 	for (;;) {
 		int ret = try_to_del_timer_sync(timer);
 		if (ret >= 0)
@@ -1118,7 +1098,7 @@ static inline void __run_timers(struct tvec_base *base)
 
 			timer_stats_account_timer(timer);
 
-			set_running_timer(base, timer);
+			base->running_timer = timer;
 			detach_timer(timer, 1);
 
 			spin_unlock_irq(&base->lock);
@@ -1126,7 +1106,7 @@ static inline void __run_timers(struct tvec_base *base)
 			spin_lock_irq(&base->lock);
 		}
 	}
-	set_running_timer(base, NULL);
+	base->running_timer = NULL;
 	spin_unlock_irq(&base->lock);
 }
 
@@ -1256,7 +1236,7 @@ static unsigned long cmp_next_hrtimer_event(unsigned long now,
  */
 unsigned long get_next_timer_interrupt(unsigned long now)
 {
-	struct tvec_base *base = __get_cpu_var(tvec_bases);
+	struct tvec_base *base = __this_cpu_read(tvec_bases);
 	unsigned long expires;
 
 	/*
@@ -1305,7 +1285,7 @@ void update_process_times(int user_tick)
  */
 static void run_timer_softirq(struct softirq_action *h)
 {
-	struct tvec_base *base = __get_cpu_var(tvec_bases);
+	struct tvec_base *base = __this_cpu_read(tvec_bases);
 
 	hrtimer_run_pending();
 

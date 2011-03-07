@@ -27,7 +27,7 @@
  * 2. We assume printascii is called at least once before paging_init,
  *    and addruart has a chance to read OMAP_UART_INFO
  */
-#define OMAP_UART_INFO		(PHYS_OFFSET + 0x3ffc)
+#define OMAP_UART_INFO		(PLAT_PHYS_OFFSET + 0x3ffc)
 
 /* OMAP1 serial ports */
 #define OMAP1_UART1_BASE	0xfffb0000
@@ -93,9 +93,12 @@
 			})
 
 #ifndef __ASSEMBLER__
+
+struct omap_board_data;
+
 extern void __init omap_serial_early_init(void);
 extern void omap_serial_init(void);
-extern void omap_serial_init_port(int port);
+extern void omap_serial_init_port(struct omap_board_data *bdata);
 extern int omap_uart_can_sleep(void);
 extern void omap_uart_check_wakeup(void);
 extern void omap_uart_prepare_suspend(void);

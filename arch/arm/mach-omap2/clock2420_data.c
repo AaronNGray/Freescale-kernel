@@ -22,8 +22,8 @@
 #include "clock.h"
 #include "clock2xxx.h"
 #include "opp2xxx.h"
-#include "prm.h"
-#include "cm.h"
+#include "cm2xxx_3xxx.h"
+#include "prm2xxx_3xxx.h"
 #include "prm-regbits-24xx.h"
 #include "cm-regbits-24xx.h"
 #include "sdrc.h"
@@ -812,7 +812,7 @@ static struct clk dss2_fck = {		/* Alt clk used in power management */
 	.clksel_reg	= OMAP_CM_REGADDR(CORE_MOD, CM_CLKSEL1),
 	.clksel_mask	= OMAP24XX_CLKSEL_DSS2_MASK,
 	.clksel		= dss2_fck_clksel,
-	.recalc		= &followparent_recalc,
+	.recalc		= &omap2_clksel_recalc,
 };
 
 static struct clk dss_54m_fck = {	/* Alt clk used in power management */
@@ -1786,10 +1786,10 @@ static struct omap_clk omap2420_clks[] = {
 	CLK(NULL,	"gfx_2d_fck",	&gfx_2d_fck,	CK_242X),
 	CLK(NULL,	"gfx_ick",	&gfx_ick,	CK_242X),
 	/* DSS domain clocks */
-	CLK("omapdss",	"ick",		&dss_ick,	CK_242X),
-	CLK("omapdss",	"dss1_fck",	&dss1_fck,	CK_242X),
-	CLK("omapdss",	"dss2_fck",	&dss2_fck,	CK_242X),
-	CLK("omapdss",	"tv_fck",	&dss_54m_fck,	CK_242X),
+	CLK("omap_dss",	"ick",		&dss_ick,	CK_242X),
+	CLK("omap_dss",	"fck",		&dss1_fck,	CK_242X),
+	CLK("omap_dss",	"sys_clk",	&dss2_fck,	CK_242X),
+	CLK("omap_dss",	"tv_clk",	&dss_54m_fck,	CK_242X),
 	/* L3 domain clocks */
 	CLK(NULL,	"core_l3_ck",	&core_l3_ck,	CK_242X),
 	CLK(NULL,	"ssi_fck",	&ssi_ssr_sst_fck, CK_242X),
@@ -1799,6 +1799,7 @@ static struct omap_clk omap2420_clks[] = {
 	CLK(NULL,	"ssi_l4_ick",	&ssi_l4_ick,	CK_242X),
 	/* virtual meta-group clock */
 	CLK(NULL,	"virt_prcm_set", &virt_prcm_set, CK_242X),
+	CLK(NULL,	"cpu_ck", &virt_prcm_set, CK_242X),
 	/* general l4 interface ck, multi-parent functional clk */
 	CLK(NULL,	"gpt1_ick",	&gpt1_ick,	CK_242X),
 	CLK(NULL,	"gpt1_fck",	&gpt1_fck,	CK_242X),
@@ -1862,10 +1863,10 @@ static struct omap_clk omap2420_clks[] = {
 	CLK(NULL,	"eac_fck",	&eac_fck,	CK_242X),
 	CLK("omap_hdq.0", "ick",	&hdq_ick,	CK_242X),
 	CLK("omap_hdq.1", "fck",	&hdq_fck,	CK_242X),
-	CLK("i2c_omap.1", "ick",	&i2c1_ick,	CK_242X),
-	CLK("i2c_omap.1", "fck",	&i2c1_fck,	CK_242X),
-	CLK("i2c_omap.2", "ick",	&i2c2_ick,	CK_242X),
-	CLK("i2c_omap.2", "fck",	&i2c2_fck,	CK_242X),
+	CLK("omap_i2c.1", "ick",	&i2c1_ick,	CK_242X),
+	CLK("omap_i2c.1", "fck",	&i2c1_fck,	CK_242X),
+	CLK("omap_i2c.2", "ick",	&i2c2_ick,	CK_242X),
+	CLK("omap_i2c.2", "fck",	&i2c2_fck,	CK_242X),
 	CLK(NULL,	"gpmc_fck",	&gpmc_fck,	CK_242X),
 	CLK(NULL,	"sdma_fck",	&sdma_fck,	CK_242X),
 	CLK(NULL,	"sdma_ick",	&sdma_ick,	CK_242X),
@@ -1877,7 +1878,7 @@ static struct omap_clk omap2420_clks[] = {
 	CLK("omap-aes",	"ick",	&aes_ick,	CK_242X),
 	CLK(NULL,	"pka_ick",	&pka_ick,	CK_242X),
 	CLK(NULL,	"usb_fck",	&usb_fck,	CK_242X),
-	CLK("musb_hdrc",	"fck",	&osc_ck,	CK_242X),
+	CLK("musb-hdrc",	"fck",	&osc_ck,	CK_242X),
 };
 
 /*

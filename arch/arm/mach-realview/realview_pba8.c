@@ -273,9 +273,9 @@ static struct platform_device pmu_device = {
 static void __init gic_init_irq(void)
 {
 	/* ARM PB-A8 on-board GIC */
-	gic_cpu_base_addr = __io_address(REALVIEW_PBA8_GIC_CPU_BASE);
-	gic_dist_init(0, __io_address(REALVIEW_PBA8_GIC_DIST_BASE), IRQ_PBA8_GIC_START);
-	gic_cpu_init(0, __io_address(REALVIEW_PBA8_GIC_CPU_BASE));
+	gic_init(0, IRQ_PBA8_GIC_START,
+		 __io_address(REALVIEW_PBA8_GIC_DIST_BASE),
+		 __io_address(REALVIEW_PBA8_GIC_CPU_BASE));
 }
 
 static void __init realview_pba8_timer_init(void)
@@ -331,7 +331,7 @@ static void __init realview_pba8_init(void)
 
 MACHINE_START(REALVIEW_PBA8, "ARM-RealView PB-A8")
 	/* Maintainer: ARM Ltd/Deep Blue Solutions Ltd */
-	.boot_params	= PHYS_OFFSET + 0x00000100,
+	.boot_params	= PLAT_PHYS_OFFSET + 0x00000100,
 	.fixup		= realview_fixup,
 	.map_io		= realview_pba8_map_io,
 	.init_irq	= gic_init_irq,

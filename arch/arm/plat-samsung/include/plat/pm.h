@@ -15,7 +15,11 @@
  * management
 */
 
-#ifdef CONFIG_PM
+#include <linux/irq.h>
+
+struct sys_device;
+
+#ifdef CONFIG_SUSPEND
 
 extern __init int s3c_pm_init(void);
 
@@ -99,8 +103,8 @@ extern void s3c_pm_do_save(struct sleep_save *ptr, int count);
 extern void s3c_pm_do_restore(struct sleep_save *ptr, int count);
 extern void s3c_pm_do_restore_core(struct sleep_save *ptr, int count);
 
-#ifdef CONFIG_PM
-extern int s3c_irqext_wake(unsigned int irqno, unsigned int state);
+#ifdef CONFIG_SUSPEND
+extern int s3c_irqext_wake(struct irq_data *data, unsigned int state);
 extern int s3c24xx_irq_suspend(struct sys_device *dev, pm_message_t state);
 extern int s3c24xx_irq_resume(struct sys_device *dev);
 #else

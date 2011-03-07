@@ -125,7 +125,6 @@ init_cpu_pmu(void)
 			break;
 	}
 
-out:
 	return err;
 }
 

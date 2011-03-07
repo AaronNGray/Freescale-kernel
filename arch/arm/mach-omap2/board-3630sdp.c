@@ -25,6 +25,24 @@
 #include "board-flash.h"
 #include "mux.h"
 #include "sdram-hynix-h8mbx00u0mer-0em.h"
+#include "pm.h"
+
+static struct cpuidle_params omap36xx_cpuidle_params_table[] = {
+	/* C1 */
+	{1, 74, 78, 152},
+	/* C2 */
+	{0, 165, 90, 255},
+	/* C3 */
+	{1, 163, 180, 345},
+	/* C4 */
+	{0, 2852, 605, 3457},
+	/* C5 */
+	{1, 800, 366, 2120},
+	/* C6 */
+	{0, 4080, 801, 4881},
+	/* C7 */
+	{1, 4300, 8794, 159000},
+};
 
 #if defined(CONFIG_SMC91X) || defined(CONFIG_SMC91X_MODULE)
 
@@ -73,18 +91,16 @@ static void __init omap_sdp_init_irq(void)
 {
 	omap_board_config = sdp_config;
 	omap_board_config_size = ARRAY_SIZE(sdp_config);
-	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params,
-			h8mbx00u0mer0em_sdrc_params);
+	omap2_init_common_infrastructure();
+	omap2_init_common_devices(h8mbx00u0mer0em_sdrc_params,
+				  h8mbx00u0mer0em_sdrc_params);
 	omap_init_irq();
-	omap_gpio_init();
 }
 
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
-#else
-#define board_mux	NULL
 #endif
 
 /*
@@ -209,10 +225,12 @@ static void __init omap_sdp_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBP);
 	zoom_peripherals_init();
+	zoom_display_init();
 	board_smc91x_init();
 	board_flash_init(sdp_flash_partitions, chip_sel_sdp);
 	enable_board_wakeup_source();
 	usb_ehci_init(&ehci_pdata);
+	omap3_pm_init_cpuidle(omap36xx_cpuidle_params_table);
 }
 
 MACHINE_START(OMAP_3630SDP, "OMAP 3630SDP board")

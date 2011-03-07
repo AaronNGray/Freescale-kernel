@@ -112,11 +112,11 @@ enum omap_parallel_interface_mode {
 };
 
 enum dss_clock {
-	DSS_CLK_ICK	= 1 << 0,
-	DSS_CLK_FCK1	= 1 << 1,
-	DSS_CLK_FCK2	= 1 << 2,
-	DSS_CLK_54M	= 1 << 3,
-	DSS_CLK_96M	= 1 << 4,
+	DSS_CLK_ICK	= 1 << 0,	/* DSS_L3_ICLK and DSS_L4_ICLK */
+	DSS_CLK_FCK	= 1 << 1,	/* DSS1_ALWON_FCLK */
+	DSS_CLK_SYSCK	= 1 << 2,	/* DSS2_ALWON_FCLK */
+	DSS_CLK_TVFCK	= 1 << 3,	/* DSS_TV_FCLK */
+	DSS_CLK_VIDFCK	= 1 << 4,	/* DSS_96M_FCLK*/
 };
 
 enum dss_clk_source {
@@ -169,15 +169,9 @@ struct seq_file;
 struct platform_device;
 
 /* core */
-void dss_clk_enable(enum dss_clock clks);
-void dss_clk_disable(enum dss_clock clks);
-unsigned long dss_clk_get_rate(enum dss_clock clk);
-int dss_need_ctx_restore(void);
-void dss_dump_clocks(struct seq_file *s);
 struct bus_type *dss_get_bus(void);
 struct regulator *dss_get_vdds_dsi(void);
 struct regulator *dss_get_vdds_sdi(void);
-struct regulator *dss_get_vdda_dac(void);
 
 /* display */
 int dss_suspend_all_devices(void);
@@ -214,13 +208,21 @@ void dss_overlay_setup_l4_manager(struct omap_overlay_manager *mgr);
 void dss_recheck_connections(struct omap_dss_device *dssdev, bool force);
 
 /* DSS */
-int dss_init(bool skip_init);
-void dss_exit(void);
+int dss_init_platform_driver(void);
+void dss_uninit_platform_driver(void);
 
 void dss_save_context(void);
 void dss_restore_context(void);
+void dss_clk_enable(enum dss_clock clks);
+void dss_clk_disable(enum dss_clock clks);
+unsigned long dss_clk_get_rate(enum dss_clock clk);
+int dss_need_ctx_restore(void);
+void dss_dump_clocks(struct seq_file *s);
 
 void dss_dump_regs(struct seq_file *s);
+#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
+void dss_debug_dump_clocks(struct seq_file *s);
+#endif
 
 void dss_sdi_init(u8 datapairs);
 int dss_sdi_enable(void);
@@ -259,8 +261,8 @@ static inline void sdi_exit(void)
 
 /* DSI */
 #ifdef CONFIG_OMAP2_DSS_DSI
-int dsi_init(struct platform_device *pdev);
-void dsi_exit(void);
+int dsi_init_platform_driver(void);
+void dsi_uninit_platform_driver(void);
 
 void dsi_dump_clocks(struct seq_file *s);
 void dsi_dump_irqs(struct seq_file *s);
@@ -285,11 +287,11 @@ void dsi_get_overlay_fifo_thresholds(enum omap_plane plane,
 void dsi_wait_dsi1_pll_active(void);
 void dsi_wait_dsi2_pll_active(void);
 #else
-static inline int dsi_init(struct platform_device *pdev)
+static inline int dsi_init_platform_driver(void)
 {
 	return 0;
 }
-static inline void dsi_exit(void)
+static inline void dsi_uninit_platform_driver(void)
 {
 }
 static inline void dsi_wait_dsi1_pll_active(void)
@@ -316,8 +318,8 @@ static inline void dpi_exit(void)
 #endif
 
 /* DISPC */
-int dispc_init(void);
-void dispc_exit(void);
+int dispc_init_platform_driver(void);
+void dispc_uninit_platform_driver(void);
 void dispc_dump_clocks(struct seq_file *s);
 void dispc_dump_irqs(struct seq_file *s);
 void dispc_dump_regs(struct seq_file *s);
@@ -333,9 +335,9 @@ void dispc_disable_sidle(void);
 void dispc_lcd_enable_signal_polarity(bool act_high);
 void dispc_lcd_enable_signal(bool enable);
 void dispc_pck_free_enable(bool enable);
-void dispc_enable_fifohandcheck(bool enable);
+void dispc_enable_fifohandcheck(enum omap_channel channel, bool enable);
 
-void dispc_set_lcd_size(u16 width, u16 height);
+void dispc_set_lcd_size(enum omap_channel channel, u16 width, u16 height);
 void dispc_set_digit_size(u16 width, u16 height);
 u32 dispc_get_plane_fifo_size(enum omap_plane plane);
 void dispc_setup_plane_fifo(enum omap_plane plane, u32 low, u32 high);
@@ -359,7 +361,8 @@ int dispc_setup_plane(enum omap_plane plane,
 		      bool ilace,
 		      enum omap_dss_rotation_type rotation_type,
 		      u8 rotation, bool mirror,
-		      u8 global_alpha);
+		      u8 global_alpha, u8 pre_mult_alpha,
+		      enum omap_channel channel);
 
 bool dispc_go_busy(enum omap_channel channel);
 void dispc_go(enum omap_channel channel);
@@ -368,9 +371,11 @@ bool dispc_is_channel_enabled(enum omap_channel channel);
 int dispc_enable_plane(enum omap_plane plane, bool enable);
 void dispc_enable_replication(enum omap_plane plane, bool enable);
 
-void dispc_set_parallel_interface_mode(enum omap_parallel_interface_mode mode);
-void dispc_set_tft_data_lines(u8 data_lines);
-void dispc_set_lcd_display_type(enum omap_lcd_display_type type);
+void dispc_set_parallel_interface_mode(enum omap_channel channel,
+		enum omap_parallel_interface_mode mode);
+void dispc_set_tft_data_lines(enum omap_channel channel, u8 data_lines);
+void dispc_set_lcd_display_type(enum omap_channel channel,
+		enum omap_lcd_display_type type);
 void dispc_set_loadmode(enum omap_dss_load_mode mode);
 
 void dispc_set_default_color(enum omap_channel channel, u32 color);
@@ -387,54 +392,58 @@ bool dispc_trans_key_enabled(enum omap_channel ch);
 bool dispc_alpha_blending_enabled(enum omap_channel ch);
 
 bool dispc_lcd_timings_ok(struct omap_video_timings *timings);
-void dispc_set_lcd_timings(struct omap_video_timings *timings);
+void dispc_set_lcd_timings(enum omap_channel channel,
+		struct omap_video_timings *timings);
 unsigned long dispc_fclk_rate(void);
-unsigned long dispc_lclk_rate(void);
-unsigned long dispc_pclk_rate(void);
-void dispc_set_pol_freq(enum omap_panel_config config, u8 acbi, u8 acb);
+unsigned long dispc_lclk_rate(enum omap_channel channel);
+unsigned long dispc_pclk_rate(enum omap_channel channel);
+void dispc_set_pol_freq(enum omap_channel channel,
+		enum omap_panel_config config, u8 acbi, u8 acb);
 void dispc_find_clk_divs(bool is_tft, unsigned long req_pck, unsigned long fck,
 		struct dispc_clock_info *cinfo);
 int dispc_calc_clock_rates(unsigned long dispc_fclk_rate,
 		struct dispc_clock_info *cinfo);
-int dispc_set_clock_div(struct dispc_clock_info *cinfo);
-int dispc_get_clock_div(struct dispc_clock_info *cinfo);
+int dispc_set_clock_div(enum omap_channel channel,
+		struct dispc_clock_info *cinfo);
+int dispc_get_clock_div(enum omap_channel channel,
+		struct dispc_clock_info *cinfo);
 
 
 /* VENC */
 #ifdef CONFIG_OMAP2_DSS_VENC
-int venc_init(struct platform_device *pdev);
-void venc_exit(void);
+int venc_init_platform_driver(void);
+void venc_uninit_platform_driver(void);
 void venc_dump_regs(struct seq_file *s);
 int venc_init_display(struct omap_dss_device *display);
 #else
-static inline int venc_init(struct platform_device *pdev)
+static inline int venc_init_platform_driver(void)
 {
 	return 0;
 }
-static inline void venc_exit(void)
+static inline void venc_uninit_platform_driver(void)
 {
 }
 #endif
 
 /* RFBI */
 #ifdef CONFIG_OMAP2_DSS_RFBI
-int rfbi_init(void);
-void rfbi_exit(void);
+int rfbi_init_platform_driver(void);
+void rfbi_uninit_platform_driver(void);
 void rfbi_dump_regs(struct seq_file *s);
 
 int rfbi_configure(int rfbi_module, int bpp, int lines);
 void rfbi_enable_rfbi(bool enable);
-void rfbi_transfer_area(u16 width, u16 height,
-			     void (callback)(void *data), void *data);
+void rfbi_transfer_area(struct omap_dss_device *dssdev, u16 width,
+		u16 height, void (callback)(void *data), void *data);
 void rfbi_set_timings(int rfbi_module, struct rfbi_timings *t);
 unsigned long rfbi_get_max_tx_rate(void);
 int rfbi_init_display(struct omap_dss_device *display);
 #else
-static inline int rfbi_init(void)
+static inline int rfbi_init_platform_driver(void)
 {
 	return 0;
 }
-static inline void rfbi_exit(void)
+static inline void rfbi_uninit_platform_driver(void)
 {
 }
 #endif

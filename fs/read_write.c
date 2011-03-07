@@ -40,18 +40,9 @@ DEFINE_TRACE(fs_pwrite64);
 DEFINE_TRACE(fs_readv);
 DEFINE_TRACE(fs_writev);
 
-static int
-__negative_fpos_check(struct file *file, loff_t pos, size_t count)
+static inline int unsigned_offsets(struct file *file)
 {
-	/*
-	 * pos or pos+count is negative here, check overflow.
-	 * too big "count" will be caught in rw_verify_area().
-	 */
-	if ((pos < 0) && (pos + count < pos))
-		return -EOVERFLOW;
-	if (file->f_mode & FMODE_UNSIGNED_OFFSET)
-		return 0;
-	return -EINVAL;
+	return file->f_mode & FMODE_UNSIGNED_OFFSET;
 }
 
 /**
@@ -85,7 +76,7 @@ generic_file_llseek_unlocked(struct file *file, loff_t offset, int origin)
 		break;
 	}
 
-	if (offset < 0 && __negative_fpos_check(file, offset, 0))
+	if (offset < 0 && !unsigned_offsets(file))
 		return -EINVAL;
 	if (offset > inode->i_sb->s_maxbytes)
 		return -EINVAL;
@@ -162,7 +153,7 @@ loff_t default_llseek(struct file *file, loff_t offset, int origin)
 			offset += file->f_pos;
 	}
 	retval = -EINVAL;
-	if (offset >= 0 || !__negative_fpos_check(file, offset, 0)) {
+	if (offset >= 0 || unsigned_offsets(file)) {
 		if (offset != file->f_pos) {
 			file->f_pos = offset;
 			file->f_version = 0;
@@ -267,9 +258,13 @@ int rw_verify_area(int read_write, struct file *file, loff_t *ppos, size_t count
 	if (unlikely((ssize_t) count < 0))
 		return retval;
 	pos = *ppos;
-	if (unlikely((pos < 0) || (loff_t) (pos + count) < 0)) {
-		retval = __negative_fpos_check(file, pos, count);
-		if (retval)
+	if (unlikely(pos < 0)) {
+		if (!unsigned_offsets(file))
+			return retval;
+		if (count >= -pos) /* both values are in 0..LLONG_MAX */
+			return -EOVERFLOW;
+	} else if (unlikely((loff_t) (pos + count) < 0)) {
+		if (!unsigned_offsets(file))
 			return retval;
 	}
 
