@@ -416,37 +416,19 @@ static notrace __kprobes void default_do_nmi(struct pt_regs *regs)
 {
 	unsigned char reason = 0;
 
-<<<<<<< HEAD
-	cpu = smp_processor_id();
-
-	/* Only the BSP gets external NMIs from the system. */
-	if (!cpu)
-		reason = get_nmi_reason();
-
 	trace_trap_entry(regs, 2);
 
-	if (!(reason & 0xc0)) {
-		if (notify_die(DIE_NMI_IPI, "nmi_ipi", regs, reason, 2, SIGINT)
-								== NOTIFY_STOP)
-			goto end;
-
-#ifdef CONFIG_X86_LOCAL_APIC
-		if (notify_die(DIE_NMI, "nmi", regs, reason, 2, SIGINT)
-							== NOTIFY_STOP)
-			goto end;
-=======
 	/*
 	 * CPU-specific NMI must be processed before non-CPU-specific
 	 * NMI, otherwise we may lose it, because the CPU-specific
 	 * NMI can not be detected/processed on other CPUs.
 	 */
 	if (notify_die(DIE_NMI, "nmi", regs, 0, 2, SIGINT) == NOTIFY_STOP)
-		return;
+		goto end;
 
 	/* Non-CPU-specific NMI: NMI sources can be processed on any CPU */
 	raw_spin_lock(&nmi_reason_lock);
 	reason = get_nmi_reason();
->>>>>>> 8f0ab72d6f4bcc20ab0c6b47ece9c1c872f6ca09
 
 	if (reason & NMI_REASON_MASK) {
 		if (reason & NMI_REASON_SERR)
@@ -458,45 +440,16 @@ static notrace __kprobes void default_do_nmi(struct pt_regs *regs)
 		 * Reassert NMI in case it became active
 		 * meanwhile as it's edge-triggered:
 		 */
-<<<<<<< HEAD
-		if (nmi_watchdog_tick(regs, reason))
-			goto end;
-		if (!do_nmi_callback(regs, cpu))
-#endif /* !CONFIG_LOCKUP_DETECTOR */
-			unknown_nmi_error(reason, regs);
-#else
-		unknown_nmi_error(reason, regs);
-#endif
-
-		goto end;
-	}
-	if (notify_die(DIE_NMI, "nmi", regs, reason, 2, SIGINT) == NOTIFY_STOP)
-		goto end;
-
-	/* AK: following checks seem to be broken on modern chipsets. FIXME */
-	if (reason & 0x80)
-		mem_parity_error(reason, regs);
-	if (reason & 0x40)
-		io_check_error(reason, regs);
-#ifdef CONFIG_X86_32
-	/*
-	 * Reassert NMI in case it became active meanwhile
-	 * as it's edge-triggered:
-	 */
-	reassert_nmi();
-#endif
-end:
-	trace_trap_exit();
-=======
 		reassert_nmi();
 #endif
 		raw_spin_unlock(&nmi_reason_lock);
-		return;
+		goto end;
 	}
 	raw_spin_unlock(&nmi_reason_lock);
 
 	unknown_nmi_error(reason, regs);
->>>>>>> 8f0ab72d6f4bcc20ab0c6b47ece9c1c872f6ca09
+end:
+	trace_trap_exit();
 }
 
 dotraplinkage notrace __kprobes void
