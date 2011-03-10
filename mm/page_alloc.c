@@ -53,6 +53,7 @@
 #include <linux/compaction.h>
 #include <trace/events/kmem.h>
 #include <linux/ftrace_event.h>
+#include <trace/page_alloc.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -128,6 +129,9 @@ void pm_restrict_gfp_mask(void)
 #ifdef CONFIG_HUGETLB_PAGE_SIZE_VARIABLE
 int pageblock_order __read_mostly;
 #endif
+
+DEFINE_TRACE(page_alloc);
+DEFINE_TRACE(page_free);
 
 static void __free_pages_ok(struct page *page, unsigned int order);
 
@@ -2165,6 +2169,7 @@ nopage:
 	}
 	return page;
 got_pg:
+	trace_page_alloc(page, order);
 	if (kmemcheck_enabled)
 		kmemcheck_pagealloc_alloc(page, order, gfp_mask);
 	return page;
