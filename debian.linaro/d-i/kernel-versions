@@ -1,8 +1,0 @@
-# arch	version		flavour		installedname			suffix	bdep
-armel	2.6.38-1000	linaro-mx51	2.6.38-1000-linaro-mx51	-
-armel	2.6.38-1000	linaro-omap	2.6.38-1000-linaro-omap	-
-armel	2.6.38-1000	linaro-s5pv310	2.6.38-1000-linaro-s5pv310	-
-armel	2.6.38-1000	linaro-vexpress	2.6.38-1000-linaro-vexpress	-
-armel	2.6.38-1000	linaro-u8500	2.6.38-1000-linaro-u8500	-
-# Ports
-# arch	version		flavour		installedname			suffix	bdep
