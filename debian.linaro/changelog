@@ -1,4 +1,4 @@
-linux-linaro-lt-mx5 (2.6.38-1000.7) natty; urgency=low
+linux-linaro-lt-mx5-2.6.38 (2.6.38-1000.7) natty; urgency=low
 
   * fix SATA clock fuse setting on mx53
     - LP: #785567
@@ -8,7 +8,7 @@ linux-linaro-lt-mx5 (2.6.38-1000.7) natty; urgency=low
 
  -- Eric Miao <eric.miao@linaro.org>  Tue, 26 Jul 2011 10:14:14 +0800
 
-linux-linaro-lt-mx5 (2.6.38-1000.6) natty; urgency=low
+linux-linaro-lt-mx5-2.6.38 (2.6.38-1000.6) natty; urgency=low
 
   * MX51: Add sgtl5000 support for babbage
     - LP: #805426
@@ -33,7 +33,7 @@ linux-linaro-lt-mx5 (2.6.38-1000.6) natty; urgency=low
 
  -- Eric Miao <eric.miao@linaro.org>  Mon, 18 Jul 2011 12:28:11 +0800
 
-linux-linaro-lt-mx5 (2.6.38-1000.5) natty; urgency=low
+linux-linaro-lt-mx5-2.6.38 (2.6.38-1000.5) natty; urgency=low
 
   * Revert "SAUCE: MX5: Disable ondemand governor temporarily"
     - LP: #773242
@@ -52,7 +52,7 @@ linux-linaro-lt-mx5 (2.6.38-1000.5) natty; urgency=low
 
  -- Eric Miao <eric.miao@linaro.org>  Fri, 27 May 2011 21:01:40 +0800
 
-linux-linaro-lt-mx5 (2.6.38-1000.4) natty; urgency=low
+linux-linaro-lt-mx5-2.6.38 (2.6.38-1000.4) natty; urgency=low
 
   * SAUCE: MX5: Disable ondemand governor temporarily
     - LP: #773242
@@ -62,20 +62,20 @@ linux-linaro-lt-mx5 (2.6.38-1000.4) natty; urgency=low
 
  -- Eric Miao <eric.miao@linaro.org>  Fri, 29 Apr 2011 21:46:12 +0800
 
-linux-linaro-lt-mx5 (2.6.38-1000.3) natty; urgency=low
+linux-linaro-lt-mx5-2.6.38 (2.6.38-1000.3) natty; urgency=low
 
   * SAUCE: MX5: fix possible panic due to incorrectly calculated timeout
     - LP: #768373
 
  -- Eric Miao <eric.miao@linaro.org>  Mon, 25 Apr 2011 10:46:45 +0800
 
-linux-linaro-lt-mx5 (2.6.38-1000.2) natty; urgency=low
+linux-linaro-lt-mx5-2.6.38 (2.6.38-1000.2) natty; urgency=low
 
   * Add missing input-modules to d-i exclude list
 
  -- Eric Miao <eric.miao@linaro.org>  Fri, 22 Apr 2011 13:08:07 +0800
 
-linux-linaro-lt-mx5 (2.6.38-1000.1) natty; urgency=low
+linux-linaro-lt-mx5-2.6.38 (2.6.38-1000.1) natty; urgency=low
 
   * Initial release based on Freescale's early 2.6.38 kernel release
 
