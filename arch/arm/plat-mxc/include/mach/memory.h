@@ -55,4 +55,10 @@
 #define CONSISTENT_DMA_SIZE SZ_4M
 #endif /* CONFIG_MX1_VIDEO || CONFIG_VIDEO_MX2_HOSTSUPPORT */
 
+#ifdef CONFIG_ARCH_MX5
+#define CONSISTENT_DMA_SIZE     (128 * SZ_1M)
+#else
+#define CONSISTENT_DMA_SIZE     (32 * SZ_1M)
+#endif
+
 #endif /* __ASM_ARCH_MXC_MEMORY_H__ */
