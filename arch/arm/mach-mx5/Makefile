@@ -3,7 +3,8 @@
 #
 
 # Object file lists.
-obj-y   := cpu.o mm.o devices.o ehci.o system.o bus_freq.o sdram_autogating.o suspend.o
+obj-y   := cpu.o mm.o devices.o ehci.o system.o bus_freq.o sdram_autogating.o \
+	   suspend.o
 obj-$(CONFIG_SOC_IMX50) += mm-mx50.o
 obj-$(CONFIG_SOC_IMX51)	+= clock.o
 obj-$(CONFIG_SOC_IMX53)	+= clock.o
@@ -24,3 +25,5 @@ obj-$(CONFIG_MX51_EFIKA_COMMON) += mx51_efika.o
 obj-$(CONFIG_MACH_MX51_EFIKAMX) += board-mx51_efikamx.o
 obj-$(CONFIG_MACH_MX51_EFIKASB) += board-mx51_efikasb.o
 obj-$(CONFIG_MACH_MX50_RDP) += board-mx50_rdp.o
+
+obj-$(CONFIG_USB_SUPPORT)	+= usb_h1.o usb_dr.o
