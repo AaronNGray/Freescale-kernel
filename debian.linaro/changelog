@@ -1,4 +1,4 @@
-linux-linaro (3.0.0-1007.11) natty; urgency=low
+linux-linaro-omap (3.0.0-1007.11) natty; urgency=low
 
   [ John Rigby ]
 
@@ -8,7 +8,7 @@ linux-linaro (3.0.0-1007.11) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 27 Sep 2011 13:23:11 -0600
 
-linux-linaro (3.0.0-1007.10) natty; urgency=low
+linux-linaro-omap (3.0.0-1007.10) natty; urgency=low
 
   [ John Rigby ]
 
@@ -16,7 +16,7 @@ linux-linaro (3.0.0-1007.10) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Mon, 26 Sep 2011 18:57:19 -0600
 
-linux-linaro (3.0.0-1007.9) oneiric; urgency=low
+linux-linaro-omap (3.0.0-1007.9) oneiric; urgency=low
 
   [ John Rigby ]
 
@@ -26,7 +26,7 @@ linux-linaro (3.0.0-1007.9) oneiric; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Mon, 26 Sep 2011 10:44:23 -0600
 
-linux-linaro (3.0.0-1006.8) natty; urgency=low
+linux-linaro-omap (3.0.0-1006.8) natty; urgency=low
 
   [ John Rigby ]
 
@@ -38,7 +38,7 @@ linux-linaro (3.0.0-1006.8) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Fri, 23 Sep 2011 20:33:58 -0600
 
-linux-linaro (3.0.0-1005.7) natty; urgency=low
+linux-linaro-omap (3.0.0-1005.7) natty; urgency=low
 
   [ John Rigby ]
 
@@ -58,7 +58,7 @@ linux-linaro (3.0.0-1005.7) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Mon, 12 Sep 2011 13:36:56 -0600
 
-linux-linaro (3.0.0-1004.6) natty; urgency=low
+linux-linaro-omap (3.0.0-1004.6) natty; urgency=low
 
   [ John Rigby ]
 
@@ -67,7 +67,7 @@ linux-linaro (3.0.0-1004.6) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 24 Aug 2011 09:36:17 -0600
 
-linux-linaro (3.0.0-1004.5) natty; urgency=low
+linux-linaro-omap (3.0.0-1004.5) natty; urgency=low
 
   [ John Rigby ]
 
@@ -80,7 +80,7 @@ linux-linaro (3.0.0-1004.5) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Sun, 21 Aug 2011 22:20:20 -0600
 
-linux-linaro (3.0.0-1003.4) natty; urgency=low
+linux-linaro-omap (3.0.0-1003.4) natty; urgency=low
 
   [ John Rigby ]
   * LINARO: CONFIG: Enable basic profiling and tracing options
@@ -90,7 +90,7 @@ linux-linaro (3.0.0-1003.4) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Mon, 08 Aug 2011 12:15:28 -0600
 
-linux-linaro (3.0.0-1002.3) natty; urgency=low
+linux-linaro-omap (3.0.0-1002.3) natty; urgency=low
 
   [ John Rigby ]
 
@@ -99,7 +99,7 @@ linux-linaro (3.0.0-1002.3) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Thu, 28 Jul 2011 17:05:03 -0600
 
-linux-linaro (3.0.0-1002.2) natty; urgency=low
+linux-linaro-omap (3.0.0-1002.2) natty; urgency=low
 
   [ Ricardo Salveti ]
 
@@ -109,7 +109,7 @@ linux-linaro (3.0.0-1002.2) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Thu, 28 Jul 2011 10:58:12 -0600
 
-linux-linaro (3.0.0-1001.1) natty; urgency=low
+linux-linaro-omap (3.0.0-1001.1) natty; urgency=low
 
   [ John Rigby ]
 
@@ -123,7 +123,7 @@ linux-linaro (3.0.0-1001.1) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Mon, 25 Jul 2011 14:58:08 -0600
 
-linux-linaro (3.0.0-1000.0) natty; urgency=low
+linux-linaro-omap (3.0.0-1000.0) natty; urgency=low
 
   [ John Rigby ]
 
@@ -135,7 +135,7 @@ linux-linaro (3.0.0-1000.0) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Fri, 22 Jul 2011 00:11:56 -0600
 
-linux-linaro (2.6.39-1001.2) oneiric; urgency=low
+linux-linaro-omap (2.6.39-1001.2) oneiric; urgency=low
 
   [ John Rigby ]
 
@@ -148,7 +148,7 @@ linux-linaro (2.6.39-1001.2) oneiric; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Sun, 26 Jun 2011 18:47:45 +0100
 
-linux-linaro (2.6.39-1000.1) oneiric; urgency=low
+linux-linaro-omap (2.6.39-1000.1) oneiric; urgency=low
 
   [ John Rigby ]
 
@@ -156,7 +156,7 @@ linux-linaro (2.6.39-1000.1) oneiric; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 22 Jun 2011 07:22:49 -0600
 
-linux-linaro (2.6.39-1000.0) oneiric; urgency=low
+linux-linaro-omap (2.6.39-1000.0) oneiric; urgency=low
 
   [ John Rigby ]
 
@@ -169,7 +169,7 @@ linux-linaro (2.6.39-1000.0) oneiric; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 21 Jun 2011 13:45:49 -0600
 
-linux-linaro (2.6.38-1003.4) natty; urgency=low
+linux-linaro-omap (2.6.38-1003.4) natty; urgency=low
 
   [ Avik Sil ]
 
@@ -250,7 +250,7 @@ linux-linaro (2.6.38-1003.4) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Fri, 27 May 2011 18:53:05 -0600
 
-linux-linaro (2.6.38-1002.3) natty; urgency=low
+linux-linaro-omap (2.6.38-1002.3) natty; urgency=low
 
   [ Upstream Fixes ]
 
@@ -285,7 +285,7 @@ linux-linaro (2.6.38-1002.3) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Thu, 14 Apr 2011 12:16:06 -0600
 
-linux-linaro (2.6.38-1001.2) natty; urgency=low
+linux-linaro-omap (2.6.38-1001.2) natty; urgency=low
 
   [ John Rigby ]
 
@@ -328,7 +328,7 @@ linux-linaro (2.6.38-1001.2) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Fri, 18 Mar 2011 07:36:33 -0600
 
-linux-linaro (2.6.38-1000.1) natty; urgency=low
+linux-linaro-omap (2.6.38-1000.1) natty; urgency=low
 
   * Rebase to new upstreams:
     Linux v2.6.38-rc5
@@ -347,7 +347,7 @@ linux-linaro (2.6.38-1000.1) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 23 Feb 2011 16:57:41 -0700
 
-linux-linaro (2.6.37-1003.6) natty; urgency=low
+linux-linaro-omap (2.6.37-1003.6) natty; urgency=low
 
   [ John Rigby ]
 
@@ -378,7 +378,7 @@ linux-linaro (2.6.37-1003.6) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 08 Feb 2011 19:56:22 -0700
 
-linux-linaro (2.6.37-1002.5) natty; urgency=low
+linux-linaro-omap (2.6.37-1002.5) natty; urgency=low
 
   [ John Rigby ]
 
@@ -390,7 +390,7 @@ linux-linaro (2.6.37-1002.5) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Sat, 08 Jan 2011 18:34:41 -0700
 
-linux-linaro (2.6.37-1001.4) natty; urgency=low
+linux-linaro-omap (2.6.37-1001.4) natty; urgency=low
 
   [ John Rigby ]
 
@@ -404,7 +404,7 @@ linux-linaro (2.6.37-1001.4) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Mon, 13 Dec 2010 16:51:19 -0700
 
-linux-linaro (2.6.37-1000.3) natty; urgency=low
+linux-linaro-omap (2.6.37-1000.3) natty; urgency=low
 
   [ John Rigby ]
 
@@ -414,7 +414,7 @@ linux-linaro (2.6.37-1000.3) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 01 Dec 2010 01:07:18 -0700
 
-linux-linaro (2.6.37-1000.2) natty; urgency=low
+linux-linaro-omap (2.6.37-1000.2) natty; urgency=low
 
   [ John Rigby ]
 
@@ -422,7 +422,7 @@ linux-linaro (2.6.37-1000.2) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 30 Nov 2010 01:00:49 -0700
 
-linux-linaro (2.6.37-1000.1) natty; urgency=low
+linux-linaro-omap (2.6.37-1000.1) natty; urgency=low
 
   [ John Rigby ]
 
@@ -442,7 +442,7 @@ linux-linaro (2.6.37-1000.1) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Fri, 26 Nov 2010 14:20:09 -0700
 
-linux-linaro (2.6.36-1000.1) natty; urgency=low
+linux-linaro-omap (2.6.36-1000.1) natty; urgency=low
 
   [ John Rigby ]
 
@@ -473,7 +473,7 @@ linux-linaro (2.6.36-1000.1) natty; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Thu, 18 Nov 2010 15:23:03 -0700
 
-linux-linaro (2.6.35-1008.15) maverick-proposed; urgency=low
+linux-linaro-omap (2.6.35-1008.15) maverick-proposed; urgency=low
 
   [ Robert Nelson ]
 
@@ -482,7 +482,7 @@ linux-linaro (2.6.35-1008.15) maverick-proposed; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Thu, 21 Oct 2010 11:01:14 -0600
 
-linux-linaro (2.6.35-1008.14) maverick-proposed; urgency=low
+linux-linaro-omap (2.6.35-1008.14) maverick-proposed; urgency=low
 
   [ Andy Whitcroft ]
 
@@ -558,7 +558,7 @@ linux-linaro (2.6.35-1008.14) maverick-proposed; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 19 Oct 2010 16:09:52 -0600
 
-linux-linaro (2.6.35-1007.13) maverick; urgency=low
+linux-linaro-omap (2.6.35-1007.13) maverick; urgency=low
 
   [ Upstream Ubuntu ]
 
@@ -624,7 +624,7 @@ linux-linaro (2.6.35-1007.13) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Thu, 07 Oct 2010 17:58:05 -0600
 
-linux-linaro (2.6.35-1006.12) maverick; urgency=low
+linux-linaro-omap (2.6.35-1006.12) maverick; urgency=low
 
   [ John Rigby ]
 
@@ -637,7 +637,7 @@ linux-linaro (2.6.35-1006.12) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Mon, 20 Sep 2010 10:20:21 -0600
 
-linux-linaro (2.6.35-1006.11) maverick; urgency=low
+linux-linaro-omap (2.6.35-1006.11) maverick; urgency=low
 
   [ Upstream Kernel Changes ]
 
@@ -656,7 +656,7 @@ linux-linaro (2.6.35-1006.11) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Thu, 16 Sep 2010 18:03:14 -0600
 
-linux-linaro (2.6.35-1005.10) maverick; urgency=low
+linux-linaro-omap (2.6.35-1005.10) maverick; urgency=low
 
   [ Upstream Kernel Changes ]
 
@@ -672,7 +672,7 @@ linux-linaro (2.6.35-1005.10) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 08 Sep 2010 10:03:22 -0600
 
-linux-linaro (2.6.35-1004.9) maverick; urgency=low
+linux-linaro-omap (2.6.35-1004.9) maverick; urgency=low
 
   [ Upstream Kernel Changes ]
 
@@ -687,7 +687,7 @@ linux-linaro (2.6.35-1004.9) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Fri, 27 Aug 2010 20:27:29 -0600
 
-linux-linaro (2.6.35-1004.8) maverick; urgency=low
+linux-linaro-omap (2.6.35-1004.8) maverick; urgency=low
 
   [ John Rigby ]
 
@@ -695,7 +695,7 @@ linux-linaro (2.6.35-1004.8) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 25 Aug 2010 19:46:17 -0600
 
-linux-linaro (2.6.35-1003.7) maverick; urgency=low
+linux-linaro-omap (2.6.35-1003.7) maverick; urgency=low
 
   [ John Rigby ]
 
@@ -707,7 +707,7 @@ linux-linaro (2.6.35-1003.7) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Sun, 22 Aug 2010 21:29:44 -0600
 
-linux-linaro (2.6.35-1002.6) maverick; urgency=low
+linux-linaro-omap (2.6.35-1002.6) maverick; urgency=low
 
   [ Tim Gardner ]
 
@@ -721,7 +721,7 @@ linux-linaro (2.6.35-1002.6) maverick; urgency=low
 
  --  Tim Gardner <tim.gardner@canonical.com>  Tue, 17 Aug 2010 15:57:51 +0100
 
-linux-linaro (2.6.35-1001.5) maverick; urgency=low
+linux-linaro-omap (2.6.35-1001.5) maverick; urgency=low
 
   * New upstream trees
 
@@ -741,7 +741,7 @@ linux-linaro (2.6.35-1001.5) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 11 Aug 2010 14:20:28 -0600
 
-linux-linaro (2.6.35-1000.4) maverick; urgency=low
+linux-linaro-omap (2.6.35-1000.4) maverick; urgency=low
 
   [ John Rigby ]
 
@@ -750,7 +750,7 @@ linux-linaro (2.6.35-1000.4) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 10 Aug 2010 10:23:30 -0600
 
-linux-linaro (2.6.35-1000.3) maverick; urgency=low
+linux-linaro-omap (2.6.35-1000.3) maverick; urgency=low
 
   [ John Rigby ]
 
@@ -758,7 +758,7 @@ linux-linaro (2.6.35-1000.3) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 03 Aug 2010 10:16:29 -0600
 
-linux-linaro (2.6.35-1000.2) maverick; urgency=low
+linux-linaro-omap (2.6.35-1000.2) maverick; urgency=low
 
   [ John Rigby ]
 
@@ -766,7 +766,7 @@ linux-linaro (2.6.35-1000.2) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Wed, 28 Jul 2010 11:20:13 -0600
 
-linux-linaro (2.6.35-1000.1) maverick; urgency=low
+linux-linaro-omap (2.6.35-1000.1) maverick; urgency=low
 
   [ Linaro Kernel Changes ]
 
@@ -774,7 +774,7 @@ linux-linaro (2.6.35-1000.1) maverick; urgency=low
 
  -- John Rigby <john.rigby@linaro.org>  Tue, 27 Jul 2010 17:17:39 -0600
 
-linux-linaro (2.6.35-1000.0) maverick; urgency=low
+linux-linaro-omap (2.6.35-1000.0) maverick; urgency=low
 
   [ John Rigby ]
 
