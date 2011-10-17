@@ -4,7 +4,13 @@ linux-linaro (3.0.0-1007.12) UNRELEASED; urgency=low
   CHANGELOG: Use the printchanges target to see the curent changes.
   CHANGELOG: Use the insertchanges target to create the final log.
 
- -- John Rigby <john.rigby@linaro.org>  Mon, 03 Oct 2011 12:36:25 -0600
+  [ John Rigby ]
+
+  * rebase on new upstreams
+    linaro-linux-3.0 commit 051c523bc96d0c6d301fa5258f10d7a564ad43a2
+    Ubuntu UBUNTU: Ubuntu-3.0.0-12.20
+
+ -- John Rigby <john.rigby@linaro.org>  Mon, 17 Oct 2011 03:16:27 -0600
 
 linux-linaro (3.0.0-1007.11) natty; urgency=low
 
