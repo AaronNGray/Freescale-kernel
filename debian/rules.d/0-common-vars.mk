@@ -215,7 +215,6 @@ conc_level		= -j$(CONCURRENCY_LEVEL)
 kmake = make ARCH=$(build_arch) \
 	CROSS_COMPILE=$(CROSS_COMPILE) \
 	KERNELVERSION=$(abi_release)-$(target_flavour) \
-	CONFIG_DEBUG_SECTION_MISMATCH=y \
 	KBUILD_BUILD_VERSION="$(uploadnum)" \
 	LOCALVERSION= localver-extra=
 ifneq ($(LOCAL_ENV_CC),)
