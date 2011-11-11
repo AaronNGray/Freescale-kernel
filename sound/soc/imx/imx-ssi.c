@@ -54,6 +54,9 @@
 #include "imx-ssi.h"
 
 #define SSI_SACNT_DEFAULT (SSI_SACNT_AC97EN | SSI_SACNT_FV)
+#define IMX_SSI_FORMATS \
+	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
+	SNDRV_PCM_FMTBIT_S24_LE)
 
 static const struct of_device_id imx_ssi_dt_ids[] = {
 	{ .compatible = "fsl,imx1-ssi", },
@@ -477,13 +480,13 @@ static struct snd_soc_dai_driver imx_ssi_dai = {
 		.channels_min = 1,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_8000_96000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.formats = IMX_SSI_FORMATS,
 	},
 	.capture = {
 		.channels_min = 1,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_8000_96000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.formats = IMX_SSI_FORMATS,
 	},
 	.ops = &imx_ssi_pcm_dai_ops,
 };
