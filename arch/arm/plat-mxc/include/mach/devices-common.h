@@ -397,16 +397,6 @@ struct platform_device *__init imx_add_iim(
 		const struct imx_iim_data *data,
 		const struct mxc_iim_platform_data *pdata);
 
-#include <linux/ahci_platform.h>
-struct imx_ahci_imx_data {
-	const char *devid;
-	resource_size_t iobase;
-	resource_size_t irq;
-};
-struct platform_device *__init imx_add_ahci_imx(
-		const struct imx_ahci_imx_data *data,
-		const struct ahci_platform_data *pdata);
-
 #include <mach/mxc_gpu.h>
 struct imx_mxc_gpu_data {
 	resource_size_t irq_2d;
