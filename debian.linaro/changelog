@@ -1,7 +1,11 @@
-linux-linaro-lt-mx5-3.1 (3.1.0-1002.7) UNRELEASED; urgency=low
+linux-linaro-lt-mx5-3.1 (3.1.0-1002.7) natty; urgency=low
 
   [ Upstream Kernel Changes ]
   * Rebased to linux-linaro-3.1-2011.11-0
+
+  [ Eric Miao ]
+  * SAUCE: fix oops caused by cpuidle
+  - LP: #890578
 
  -- Eric Miao <eric.miao@linaro.org>  Tue, 15 Nov 2011 17:19:57 +0800
 
