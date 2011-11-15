@@ -1206,7 +1206,6 @@ int of_alias_get_id(struct device_node *np, const char *stem)
 {
 	struct alias_prop *app;
 	int id = -ENODEV;
-
 	mutex_lock(&of_aliases_mutex);
 	list_for_each_entry(app, &aliases_lookup, link) {
 		if (strcmp(app->stem, stem) != 0)
