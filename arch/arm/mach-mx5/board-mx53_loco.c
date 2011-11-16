@@ -557,7 +557,6 @@ static void __init mx53_loco_board_init(void)
 	irq_set_irq_wake(gpio_to_irq(MX53_LOCO_POWER), 1);
 	imx53_add_iim(&iim_data);
 
-	imx53_add_ahci_imx(0, NULL);
 	mxc_register_device(&mxc_pm_device, &loco_pm_data);
 	mx53_loco_init_da9052();
 	pm_power_off = da9053_power_off;
