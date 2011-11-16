@@ -953,7 +953,6 @@ static int fec_enet_mii_probe(struct net_device *ndev)
 	char mdio_bus_id[MII_BUS_ID_SIZE];
 	char phy_name[MII_BUS_ID_SIZE + 3];
 	int phy_id;
-	int dev_id = fep->pdev->id;
 
 	fep->phy_dev = NULL;
 
@@ -964,8 +963,6 @@ static int fec_enet_mii_probe(struct net_device *ndev)
 		if (fep->mii_bus->phy_map[phy_id] == NULL)
 			continue;
 		if (fep->mii_bus->phy_map[phy_id]->phy_id == 0)
-			continue;
-		if (dev_id--)
 			continue;
 		strncpy(mdio_bus_id, fep->mii_bus->id, MII_BUS_ID_SIZE);
 		break;
