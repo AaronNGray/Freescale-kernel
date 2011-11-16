@@ -1509,6 +1509,24 @@ static inline void fec_reset_phy(struct platform_device *pdev)
 }
 #endif /* CONFIG_OF */
 
+/* For imx6q sabrelite board: set KSZ9021 skew */
+static int ksz9021_phy_fixup(struct phy_device *phydev)
+{
+	/* prefer master mode, 1000 Base-T capable */
+	phy_write(phydev, 0x9, 0x0f00);
+
+	/* min rx data delay */
+	phy_write(phydev, 0x0b, 0x8105);
+	phy_write(phydev, 0x0c, 0x0000);
+
+	/* max rx/tx clock delay, min rx/tx control delay */
+	phy_write(phydev, 0x0b, 0x8104);
+	phy_write(phydev, 0x0c, 0xf0f0);
+	phy_write(phydev, 0x0b, 0x104);
+
+	return 0;
+}
+
 static int __devinit
 fec_probe(struct platform_device *pdev)
 {
@@ -1590,6 +1608,10 @@ fec_probe(struct platform_device *pdev)
 	ret = fec_enet_init(ndev);
 	if (ret)
 		goto failed_init;
+
+	/* register the PHY board fixup (for Micrel KSZ9021) */
+	phy_register_fixup_for_uid(0x00221611, 0xfffffff0,
+					 ksz9021_phy_fixup);
 
 	ret = fec_enet_mii_init(pdev);
 	if (ret)
