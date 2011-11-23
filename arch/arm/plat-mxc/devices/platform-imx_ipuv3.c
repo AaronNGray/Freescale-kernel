@@ -20,7 +20,6 @@
 
 #include <mach/hardware.h>
 #include <mach/devices-common.h>
-#include <linux/dma-mapping.h>
 #include <linux/clk.h>
 
 #define imx5_ipuv3_data_entry_single(soc, size, ipu_init, ipu_pg)	\

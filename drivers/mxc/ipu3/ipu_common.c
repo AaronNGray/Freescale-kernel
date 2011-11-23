@@ -29,6 +29,7 @@
 #include <linux/irq.h>
 #include <linux/irqdesc.h>
 #include <linux/clk.h>
+#include <linux/export.h>
 #include <mach/clock.h>
 #include <mach/hardware.h>
 #include <mach/ipu-v3.h>
@@ -661,8 +662,10 @@ int32_t ipu_init_channel(struct ipu_soc *ipu, ipu_channel_t channel, ipu_channel
 		if (params->csi_mem.mipi_en) {
 			ipu_conf |= (1 << (IPU_CONF_CSI0_DATA_SOURCE_OFFSET +
 				params->csi_mem.csi));
-			_ipu_smfc_init(ipu, channel, params->csi_mem.mipi_id,
+			_ipu_smfc_init(ipu, channel, params->csi_mem.mipi_vc,
 				params->csi_mem.csi);
+			_ipu_csi_set_mipi_di(ipu, params->csi_mem.mipi_vc,
+				params->csi_mem.mipi_id, params->csi_mem.csi);
 		} else {
 			ipu_conf &= ~(1 << (IPU_CONF_CSI0_DATA_SOURCE_OFFSET +
 				params->csi_mem.csi));
@@ -883,7 +886,7 @@ err:
 	_ipu_unlock(ipu);
 	return ret;
 }
-EXPORT_SYMBOL(ipu_init_channel);
+EXPORT_SYMBOL_GPL(ipu_init_channel);
 
 /*!
  * This function is called to uninitialize a logical IPU channel.
@@ -1091,7 +1094,7 @@ void ipu_uninit_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 	WARN_ON(ipu->dmfc_use_count < 0);
 	WARN_ON(ipu->smfc_use_count < 0);
 }
-EXPORT_SYMBOL(ipu_uninit_channel);
+EXPORT_SYMBOL_GPL(ipu_uninit_channel);
 
 /*!
  * This function is called to initialize buffer(s) for logical IPU channel.
@@ -1357,7 +1360,7 @@ int32_t ipu_init_channel_buffer(struct ipu_soc *ipu, ipu_channel_t channel,
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_init_channel_buffer);
+EXPORT_SYMBOL_GPL(ipu_init_channel_buffer);
 
 /*!
  * This function is called to update the physical address of a buffer for
@@ -1404,7 +1407,7 @@ int32_t ipu_update_channel_buffer(struct ipu_soc *ipu, ipu_channel_t channel,
 
 	return ret;
 }
-EXPORT_SYMBOL(ipu_update_channel_buffer);
+EXPORT_SYMBOL_GPL(ipu_update_channel_buffer);
 
 
 /*!
@@ -1472,7 +1475,7 @@ int32_t ipu_update_channel_offset(struct ipu_soc *ipu,
 	_ipu_unlock(ipu);
 	return ret;
 }
-EXPORT_SYMBOL(ipu_update_channel_offset);
+EXPORT_SYMBOL_GPL(ipu_update_channel_offset);
 
 
 /*!
@@ -1510,7 +1513,7 @@ int32_t ipu_select_buffer(struct ipu_soc *ipu, ipu_channel_t channel,
 	_ipu_unlock(ipu);
 	return 0;
 }
-EXPORT_SYMBOL(ipu_select_buffer);
+EXPORT_SYMBOL_GPL(ipu_select_buffer);
 
 /*!
  * This function is called to set a channel's buffer as ready.
@@ -1539,7 +1542,7 @@ int32_t ipu_select_multi_vdi_buffer(struct ipu_soc *ipu, uint32_t bufNum)
 	_ipu_unlock(ipu);
 	return 0;
 }
-EXPORT_SYMBOL(ipu_select_multi_vdi_buffer);
+EXPORT_SYMBOL_GPL(ipu_select_multi_vdi_buffer);
 
 #define NA	-1
 static int proc_dest_sel[] = {
@@ -1752,7 +1755,7 @@ err:
 	_ipu_unlock(ipu);
 	return retval;
 }
-EXPORT_SYMBOL(ipu_link_channels);
+EXPORT_SYMBOL_GPL(ipu_link_channels);
 
 /*!
  * This function unlinks 2 channels and disables automatic frame
@@ -1882,7 +1885,7 @@ err:
 	_ipu_unlock(ipu);
 	return retval;
 }
-EXPORT_SYMBOL(ipu_unlink_channels);
+EXPORT_SYMBOL_GPL(ipu_unlink_channels);
 
 /*!
  * This function check whether a logical channel was enabled.
@@ -1910,7 +1913,7 @@ int32_t ipu_is_channel_busy(struct ipu_soc *ipu, ipu_channel_t channel)
 		return 1;
 	return 0;
 }
-EXPORT_SYMBOL(ipu_is_channel_busy);
+EXPORT_SYMBOL_GPL(ipu_is_channel_busy);
 
 /*!
  * This function enables a logical channel.
@@ -2021,7 +2024,7 @@ int32_t ipu_enable_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_enable_channel);
+EXPORT_SYMBOL_GPL(ipu_enable_channel);
 
 /*!
  * This function check buffer ready for a logical channel.
@@ -2056,7 +2059,7 @@ int32_t ipu_check_buffer_ready(struct ipu_soc *ipu, ipu_channel_t channel, ipu_b
 	else
 		return 0;
 }
-EXPORT_SYMBOL(ipu_check_buffer_ready);
+EXPORT_SYMBOL_GPL(ipu_check_buffer_ready);
 
 /*!
  * This function clear buffer ready for a logical channel.
@@ -2098,7 +2101,7 @@ void ipu_clear_buffer_ready(struct ipu_soc *ipu, ipu_channel_t channel, ipu_buff
 	_ipu_clear_buffer_ready(ipu, channel, type, bufNum);
 	_ipu_unlock(ipu);
 }
-EXPORT_SYMBOL(ipu_clear_buffer_ready);
+EXPORT_SYMBOL_GPL(ipu_clear_buffer_ready);
 
 /*!
  * This function disables a logical channel.
@@ -2295,7 +2298,7 @@ int32_t ipu_disable_channel(struct ipu_soc *ipu, ipu_channel_t channel, bool wai
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_disable_channel);
+EXPORT_SYMBOL_GPL(ipu_disable_channel);
 
 /*!
  * This function enables CSI.
@@ -2315,6 +2318,7 @@ int32_t ipu_enable_csi(struct ipu_soc *ipu, uint32_t csi)
 		return -EINVAL;
 	}
 
+	_ipu_get(ipu);
 	_ipu_lock(ipu);
 	ipu->csi_use_count[csi]++;
 
@@ -2326,9 +2330,10 @@ int32_t ipu_enable_csi(struct ipu_soc *ipu, uint32_t csi)
 			ipu_cm_write(ipu, reg | IPU_CONF_CSI1_EN, IPU_CONF);
 	}
 	_ipu_unlock(ipu);
+	_ipu_put(ipu);
 	return 0;
 }
-EXPORT_SYMBOL(ipu_enable_csi);
+EXPORT_SYMBOL_GPL(ipu_enable_csi);
 
 /*!
  * This function disables CSI.
@@ -2347,7 +2352,7 @@ int32_t ipu_disable_csi(struct ipu_soc *ipu, uint32_t csi)
 		dev_err(ipu->dev, "Wrong csi num_%d\n", csi);
 		return -EINVAL;
 	}
-
+	_ipu_get(ipu);
 	_ipu_lock(ipu);
 	ipu->csi_use_count[csi]--;
 	if (ipu->csi_use_count[csi] == 0) {
@@ -2358,9 +2363,10 @@ int32_t ipu_disable_csi(struct ipu_soc *ipu, uint32_t csi)
 			ipu_cm_write(ipu, reg & ~IPU_CONF_CSI1_EN, IPU_CONF);
 	}
 	_ipu_unlock(ipu);
+	_ipu_put(ipu);
 	return 0;
 }
-EXPORT_SYMBOL(ipu_disable_csi);
+EXPORT_SYMBOL_GPL(ipu_disable_csi);
 
 static irqreturn_t ipu_irq_handler(int irq, void *desc)
 {
@@ -2442,7 +2448,7 @@ void ipu_enable_irq(struct ipu_soc *ipu, uint32_t irq)
 
 	_ipu_put(ipu);
 }
-EXPORT_SYMBOL(ipu_enable_irq);
+EXPORT_SYMBOL_GPL(ipu_enable_irq);
 
 /*!
  * This function disables the interrupt for the specified interrupt line.
@@ -2469,7 +2475,7 @@ void ipu_disable_irq(struct ipu_soc *ipu, uint32_t irq)
 
 	_ipu_put(ipu);
 }
-EXPORT_SYMBOL(ipu_disable_irq);
+EXPORT_SYMBOL_GPL(ipu_disable_irq);
 
 /*!
  * This function clears the interrupt for the specified interrupt line.
@@ -2493,7 +2499,7 @@ void ipu_clear_irq(struct ipu_soc *ipu, uint32_t irq)
 
 	_ipu_put(ipu);
 }
-EXPORT_SYMBOL(ipu_clear_irq);
+EXPORT_SYMBOL_GPL(ipu_clear_irq);
 
 /*!
  * This function returns the current interrupt status for the specified
@@ -2520,7 +2526,7 @@ bool ipu_get_irq_status(struct ipu_soc *ipu, uint32_t irq)
 	else
 		return false;
 }
-EXPORT_SYMBOL(ipu_get_irq_status);
+EXPORT_SYMBOL_GPL(ipu_get_irq_status);
 
 /*!
  * This function registers an interrupt handler function for the specified
@@ -2578,7 +2584,7 @@ int ipu_request_irq(struct ipu_soc *ipu, uint32_t irq,
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_request_irq);
+EXPORT_SYMBOL_GPL(ipu_request_irq);
 
 /*!
  * This function unregisters an interrupt handler for the specified interrupt
@@ -2603,7 +2609,7 @@ void ipu_free_irq(struct ipu_soc *ipu, uint32_t irq, void *dev_id)
 		ipu->irq_list[irq].handler = NULL;
 	spin_unlock_irqrestore(&ipu->spin_lock, lock_flags);
 }
-EXPORT_SYMBOL(ipu_free_irq);
+EXPORT_SYMBOL_GPL(ipu_free_irq);
 
 uint32_t ipu_get_cur_buffer_idx(struct ipu_soc *ipu, ipu_channel_t channel, ipu_buffer_t type)
 {
@@ -2626,7 +2632,7 @@ uint32_t ipu_get_cur_buffer_idx(struct ipu_soc *ipu, ipu_channel_t channel, ipu_
 			return 0;
 	}
 }
-EXPORT_SYMBOL(ipu_get_cur_buffer_idx);
+EXPORT_SYMBOL_GPL(ipu_get_cur_buffer_idx);
 
 uint32_t _ipu_channel_status(struct ipu_soc *ipu, ipu_channel_t channel)
 {
@@ -2702,7 +2708,7 @@ int32_t ipu_swap_channel(struct ipu_soc *ipu, ipu_channel_t from_ch, ipu_channel
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_swap_channel);
+EXPORT_SYMBOL_GPL(ipu_swap_channel);
 
 uint32_t bytes_per_pixel(uint32_t fmt)
 {
@@ -2737,7 +2743,7 @@ uint32_t bytes_per_pixel(uint32_t fmt)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(bytes_per_pixel);
+EXPORT_SYMBOL_GPL(bytes_per_pixel);
 
 ipu_color_space_t format_to_colorspace(uint32_t fmt)
 {
@@ -2779,8 +2785,9 @@ bool ipu_pixel_format_has_alpha(uint32_t fmt)
 	return false;
 }
 
-static int ipu_suspend(struct platform_device *pdev, pm_message_t state)
+static int ipu_suspend_noirq(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct imx_ipuv3_platform_data *plat_data = pdev->dev.platform_data;
 	struct ipu_soc *ipu = platform_get_drvdata(pdev);
 
@@ -2849,6 +2856,8 @@ static int ipu_suspend(struct platform_device *pdev, pm_message_t state)
 		ipu->buf_ready_reg[7] = ipu_cm_read(ipu, IPU_ALT_CHA_BUF1_RDY(32));
 		ipu->buf_ready_reg[8] = ipu_cm_read(ipu, IPU_CHA_BUF2_RDY(0));
 		ipu->buf_ready_reg[9] = ipu_cm_read(ipu, IPU_CHA_BUF2_RDY(32));
+
+		clk_disable(ipu->ipu_clk);
 	}
 
 	if (plat_data->pg)
@@ -2857,8 +2866,9 @@ static int ipu_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int ipu_resume(struct platform_device *pdev)
+static int ipu_resume_noirq(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct imx_ipuv3_platform_data *plat_data = pdev->dev.platform_data;
 	struct ipu_soc *ipu = platform_get_drvdata(pdev);
 
@@ -2866,6 +2876,8 @@ static int ipu_resume(struct platform_device *pdev)
 		plat_data->pg(0);
 
 	if (atomic_read(&ipu->ipu_use_count)) {
+		clk_enable(ipu->ipu_clk);
+
 		/* restore buf ready regs */
 		ipu_cm_write(ipu, ipu->buf_ready_reg[0], IPU_CHA_BUF0_RDY(0));
 		ipu_cm_write(ipu, ipu->buf_ready_reg[1], IPU_CHA_BUF0_RDY(32));
@@ -2916,17 +2928,21 @@ static int ipu_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct dev_pm_ops mxcipu_pm_ops = {
+	.suspend_noirq = ipu_suspend_noirq,
+	.resume_noirq = ipu_resume_noirq,
+};
+
 /*!
  * This structure contains pointers to the power management callback functions.
  */
 static struct platform_driver mxcipu_driver = {
 	.driver = {
 		   .name = "imx-ipuv3",
+		   .pm = &mxcipu_pm_ops,
 		   },
 	.probe = ipu_probe,
 	.remove = ipu_remove,
-	.suspend = ipu_suspend,
-	.resume = ipu_resume,
 };
 
 int32_t __init ipu_gen_init(void)

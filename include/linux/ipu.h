@@ -138,6 +138,12 @@ typedef enum {
 /*! @} */
 
 /* IPU device */
+typedef enum {
+	RGB_CS,
+	YUV_CS,
+	NULL_CS
+} cs_t;
+
 struct ipu_pos {
 	u32 x;
 	u32 y;
@@ -237,6 +243,7 @@ enum {
 	IPU_CHECK_ERR_SPLIT_INPUTH_OVER,
 	IPU_CHECK_ERR_SPLIT_OUTPUTW_OVER,
 	IPU_CHECK_ERR_SPLIT_OUTPUTH_OVER,
+	IPU_CHECK_ERR_SPLIT_WITH_ROT,
 };
 
 /* IOCTL commands */
@@ -244,5 +251,15 @@ enum {
 #define IPU_QUEUE_TASK		_IOW('I', 0x2, struct ipu_task)
 #define IPU_ALLOC		_IOWR('I', 0x3, int)
 #define IPU_FREE		_IOW('I', 0x4, int)
+
+/* export functions */
+#ifdef __KERNEL__
+unsigned int fmt_to_bpp(unsigned int pixelformat);
+cs_t colorspaceofpixel(int fmt);
+int need_csc(int ifmt, int ofmt);
+
+int ipu_queue_task(struct ipu_task *task);
+int ipu_check_task(struct ipu_task *task);
+#endif
 
 #endif

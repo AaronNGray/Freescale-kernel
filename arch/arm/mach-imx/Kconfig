@@ -22,6 +22,15 @@ config ARCH_MX25
 config MACH_MX27
 	bool
 
+config ARCH_MX31
+	bool
+
+config ARCH_MX35
+	bool
+
+config ARCH_MX6Q
+	bool
+
 config SOC_IMX1
 	bool
 	select ARCH_MX1
@@ -595,6 +604,7 @@ comment "i.MX6 family:"
 
 config SOC_IMX6Q
 	bool "i.MX6 Quad support"
+	select ARCH_MX6Q
 	select ARM_GIC
 	select CACHE_L2X0
 	select CPU_V7

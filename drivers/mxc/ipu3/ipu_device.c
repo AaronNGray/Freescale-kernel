@@ -33,20 +33,17 @@
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
 #include <linux/kthread.h>
-#include <asm/cacheflush.h>
+#include <linux/vmalloc.h>
+#include <linux/export.h>
 #include <mach/ipu-v3.h>
+#include <asm/outercache.h>
+#include <asm/cacheflush.h>
 
 #include "ipu_prv.h"
 #include "ipu_regs.h"
 #include "ipu_param_mem.h"
 
 /* Strucutures and variables for exporting MXC IPU as device*/
-typedef enum {
-	RGB_CS,
-	YUV_CS,
-	NULL_CS
-} cs_t;
-
 typedef enum {
 	STATE_OK = 0,
 	STATE_NO_IPU,
@@ -87,6 +84,8 @@ struct stripe_setting {
 	u32 o_right_pos;
 	u32 o_top_pos;
 	u32 o_bottom_pos;
+	u32 rl_split_line;
+	u32 ud_split_line;
 };
 
 struct task_set {
@@ -146,9 +145,11 @@ struct ipu_split_task {
 	struct ipu_task task;
 	struct ipu_task_entry *parent_task;
 	struct task_struct *thread;
-	bool could_finish;
+	volatile bool could_finish;
 	wait_queue_head_t waitq;
 	int ret;
+
+	u32 task_no;
 };
 
 struct ipu_task_entry {
@@ -168,8 +169,9 @@ struct ipu_task_entry {
 	struct task_set set;
 	struct completion comp;
 	ipu_state_t state;
-};
 
+	u32 task_no;
+};
 struct ipu_alloc_list {
 	struct list_head list;
 	dma_addr_t phy_addr;
@@ -179,9 +181,12 @@ struct ipu_alloc_list {
 LIST_HEAD(ipu_alloc_list);
 
 static int major;
+static u32 frame_no;
 static struct class *ipu_class;
 static struct device *ipu_dev;
-
+static char *vditmpbuf[2];
+static bool buf1filled, buf0filled;
+static u32 old_save_lines, old_size;
 int ipu_queue_sp_task(struct ipu_split_task *sp_task);
 
 static bool deinterlace_3_field(struct ipu_task_entry *t)
@@ -190,7 +195,7 @@ static bool deinterlace_3_field(struct ipu_task_entry *t)
 		(t->input.deinterlace.motion != HIGH_MOTION));
 }
 
-static u32 fmt_to_bpp(u32 pixelformat)
+unsigned int fmt_to_bpp(unsigned int pixelformat)
 {
 	u32 bpp;
 
@@ -229,8 +234,9 @@ static u32 fmt_to_bpp(u32 pixelformat)
 	}
 	return bpp;
 }
+EXPORT_SYMBOL_GPL(fmt_to_bpp);
 
-static cs_t colorspaceofpixel(int fmt)
+cs_t colorspaceofpixel(int fmt)
 {
 	switch (fmt) {
 	case IPU_PIX_FMT_RGB565:
@@ -258,8 +264,9 @@ static cs_t colorspaceofpixel(int fmt)
 		return NULL_CS;
 	}
 }
+EXPORT_SYMBOL_GPL(colorspaceofpixel);
 
-static int need_csc(int ifmt, int ofmt)
+int need_csc(int ifmt, int ofmt)
 {
 	cs_t ics, ocs;
 
@@ -273,6 +280,7 @@ static int need_csc(int ifmt, int ofmt)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(need_csc);
 
 static int soc_max_in_width(void)
 {
@@ -481,6 +489,7 @@ static void dump_task_info(struct ipu_task_entry *t)
 	dev_dbg(t->dev, "[0x%p]\tIC_MODE = 0x%x\n", (void *)t, IC_MODE);
 	dev_dbg(t->dev, "[0x%p]\tROT_MODE = 0x%x\n", (void *)t, ROT_MODE);
 	dev_dbg(t->dev, "[0x%p]\tVDI_MODE = 0x%x\n", (void *)t, VDI_MODE);
+	dev_dbg(t->dev, "[0x%p]\tTask_no = 0x%x\n\n\n", (void *)t, t->task_no);
 }
 
 static void dump_check_err(struct device *dev, int err)
@@ -519,6 +528,9 @@ static void dump_check_err(struct device *dev, int err)
 		break;
 	case IPU_CHECK_ERR_SPLIT_OUTPUTH_OVER:
 		dev_err(dev, "split mode output height overflow\n");
+		break;
+	case IPU_CHECK_ERR_SPLIT_WITH_ROT:
+		dev_err(dev, "not support split mode with rotation\n");
 		break;
 	default:
 		break;
@@ -605,15 +617,14 @@ static int update_split_setting(struct ipu_task_entry *t)
 	struct stripe_param down_stripe;
 	u32 iw, ih, ow, oh;
 
+	if (t->output.rotate >= IPU_ROTATE_90_RIGHT)
+		return IPU_CHECK_ERR_SPLIT_WITH_ROT;
+
 	iw = t->input.crop.w;
 	ih = t->input.crop.h;
-	if (t->output.rotate >= IPU_ROTATE_90_RIGHT) {
-		ow = t->output.crop.h;
-		oh = t->output.crop.w;
-	} else {
-		ow = t->output.crop.w;
-		oh = t->output.crop.h;
-	}
+
+	ow = t->output.crop.w;
+	oh = t->output.crop.h;
 
 	if (t->set.split_mode & RL_SPLIT) {
 		ipu_calc_stripes_sizes(iw,
@@ -796,9 +807,11 @@ static int check_task(struct ipu_task_entry *t)
 			t->set.split_mode |= RL_SPLIT;
 		if (t->output.crop.h > soc_max_out_height())
 			t->set.split_mode |= UD_SPLIT;
-		ret = update_split_setting(t);
-		if (ret > IPU_CHECK_ERR_MIN)
-			goto done;
+		if (t->set.split_mode) {
+			ret = update_split_setting(t);
+			if (ret > IPU_CHECK_ERR_MIN)
+				goto done;
+		}
 	}
 
 	if (t->output.rotate >= IPU_ROTATE_90_RIGHT) {
@@ -928,10 +941,11 @@ static int split_task_thread(void *data)
 
 	t->ret = ipu_queue_sp_task(t);
 
-	while (!kthread_should_stop())
-		wait_event_interruptible(t->waitq, t->could_finish);
+	t->could_finish = true;
 
-	return 0;
+	wake_up_interruptible(&t->waitq);
+
+	do_exit(0);
 }
 
 static int create_split_task(
@@ -940,6 +954,8 @@ static int create_split_task(
 {
 	struct ipu_task *task = &(sp_task->task);
 	struct ipu_task_entry *t = sp_task->parent_task;
+
+	sp_task->task_no |= stripe;
 
 	task->input = t->input;
 	task->output = t->output;
@@ -959,9 +975,14 @@ static int create_split_task(
 	if (t->output.rotate >= IPU_ROTATE_90_RIGHT) {
 		task->output.crop.w = t->set.sp_setting.oh;
 		task->output.crop.h = t->set.sp_setting.ow;
+		t->set.sp_setting.rl_split_line = t->set.sp_setting.o_bottom_pos;
+		t->set.sp_setting.ud_split_line = t->set.sp_setting.o_right_pos;
+
 	} else {
 		task->output.crop.w = t->set.sp_setting.ow;
 		task->output.crop.h = t->set.sp_setting.oh;
+		t->set.sp_setting.rl_split_line = t->set.sp_setting.o_right_pos;
+		t->set.sp_setting.ud_split_line = t->set.sp_setting.o_bottom_pos;
 	}
 
 	if (stripe & LEFT_STRIPE)
@@ -1102,11 +1123,16 @@ static int create_split_task(
 		break;
 	}
 
-	sp_task->thread = kthread_run(split_task_thread, sp_task,
+	/*check split task deinterlace enable*/
+	if (t->input.deinterlace.enable) {
+		sp_task->ret = ipu_queue_sp_task(sp_task);
+	} else {
+		sp_task->thread = kthread_run(split_task_thread, sp_task,
 					"ipu_split_task");
-	if (IS_ERR(sp_task->thread)) {
-		dev_err(t->dev, "split thread can not create\n");
-		return PTR_ERR(sp_task->thread);
+		if (IS_ERR(sp_task->thread)) {
+			dev_err(t->dev, "split thread can not create\n");
+			return PTR_ERR(sp_task->thread);
+		}
 	}
 
 	return 0;
@@ -1129,6 +1155,7 @@ static int queue_split_task(struct ipu_task_entry *t)
 		init_waitqueue_head(&(sp_task[i].waitq));
 		sp_task[i].could_finish = false;
 		sp_task[i].parent_task = t;
+		sp_task[i].task_no = t->task_no;
 	}
 
 	if (t->set.split_mode == RL_SPLIT) {
@@ -1139,24 +1166,26 @@ static int queue_split_task(struct ipu_task_entry *t)
 		create_split_task(DOWN_STRIPE, &sp_task[1]);
 	} else {
 		create_split_task(LEFT_STRIPE | UP_STRIPE, &sp_task[0]);
-		create_split_task(RIGHT_STRIPE | UP_STRIPE, &sp_task[1]);
-		create_split_task(LEFT_STRIPE | DOWN_STRIPE, &sp_task[2]);
+		create_split_task(LEFT_STRIPE | DOWN_STRIPE, &sp_task[1]);
+		create_split_task(RIGHT_STRIPE | UP_STRIPE, &sp_task[2]);
 		create_split_task(RIGHT_STRIPE | DOWN_STRIPE, &sp_task[3]);
 	}
 
-	for (i = 0; i < size; i++) {
-		sp_task[i].could_finish = true;
-		wake_up_interruptible(&sp_task[i].waitq);
-		kthread_stop(sp_task[i].thread);
-		if (sp_task[i].ret < 0) {
-			ret = sp_task[i].ret;
-			dev_err(t->dev,
-				"split task %d fail with ret %d\n",
-				i, ret);
+	/*check split task deinterlace enable*/
+	if (t->input.deinterlace.enable) {
+		return ret;
+	} else {
+		for (i = 0; i < size; i++) {
+			wait_event_interruptible(sp_task[i].waitq, sp_task[i].could_finish);
+			if (sp_task[i].ret < 0) {
+				ret = sp_task[i].ret;
+				dev_err(t->dev,
+					"split task %d fail with ret %d\n",
+					i, ret);
+			}
 		}
+		return ret;
 	}
-
-	return ret;
 }
 
 static struct ipu_task_entry *create_task_entry(struct ipu_task *task)
@@ -1198,6 +1227,8 @@ int ipu_check_task(struct ipu_task *task)
 	task->output = tsk->output;
 	task->overlay = tsk->overlay;
 
+	dump_task_info(tsk);
+
 	kfree(tsk);
 
 	return ret;
@@ -1213,11 +1244,12 @@ int ipu_queue_sp_task(struct ipu_split_task *sp_task)
 	if (IS_ERR(tsk))
 		return PTR_ERR(tsk);
 
+	tsk->task_no = sp_task->task_no;
+
 	ret = prepare_task(tsk);
 	if (ret < 0)
 		goto done;
 
-	tsk->set.sp_setting = sp_task->parent_task->set.sp_setting;
 	tsk->set.sp_setting = sp_task->parent_task->set.sp_setting;
 
 	ret = queue_task(tsk);
@@ -1230,6 +1262,7 @@ int ipu_queue_task(struct ipu_task *task)
 {
 	struct ipu_task_entry *tsk;
 	int ret;
+	u32 tmp_task_no;
 
 	tsk = create_task_entry(task);
 	if (IS_ERR(tsk))
@@ -1238,6 +1271,10 @@ int ipu_queue_task(struct ipu_task *task)
 	ret = prepare_task(tsk);
 	if (ret < 0)
 		goto done;
+
+	/* task_no last for bits for split task type*/
+	tmp_task_no = frame_no++ % 1024;
+	tsk->task_no = tmp_task_no << 4;
 
 	if (need_split(tsk))
 		ret = queue_split_task(tsk);
@@ -1529,7 +1566,7 @@ static int init_rot(struct ipu_soc *ipu, struct ipu_task_entry *t)
 			in_fmt,
 			in_width,
 			in_height,
-			t->set.istride,
+			in_stride,
 			t->output.rotate,
 			inbuf,
 			0,
@@ -1606,10 +1643,184 @@ static irqreturn_t task_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+/* Fix deinterlace up&down split mode medium line */
+static void vdi_split_process(struct ipu_soc *ipu, struct ipu_task_entry *t)
+{
+	u32 vdi_size;
+	u32 vdi_save_lines;
+	u32 stripe_mode;
+	u32 task_no;
+	u32 i, offset_addr;
+	unsigned char  *base_off;
+
+	stripe_mode = t->task_no & 0xf;
+	task_no = t->task_no >> 4;
+
+	base_off = (char *) __va(t->output.paddr);
+	if (base_off == NULL) {
+		dev_err(t->dev, "[0x%p]Falied get vitual address\n", (void *)t);
+		return;
+	}
+
+	vdi_save_lines = (t->output.crop.h - t->set.sp_setting.ud_split_line)/2 ;
+	vdi_size = vdi_save_lines * t->output.crop.w * 2;
+
+	if (vdi_save_lines <= 0) {
+		dev_err(t->dev, "[0x%p] vdi_save_line error\n", (void *)t);
+		return;
+	}
+
+	/*check vditmpbuf buffer have alloced or buffer size is changed */
+	if ((vdi_save_lines != old_save_lines) || (vdi_size != old_size)) {
+		if (vditmpbuf[0] != NULL)
+			kfree(vditmpbuf[0]);
+		if (vditmpbuf[1] != NULL)
+			kfree(vditmpbuf[1]);
+
+		vditmpbuf[0] = (char *)kmalloc(vdi_size, GFP_KERNEL);
+		if (vditmpbuf[0] == NULL) {
+			dev_err(t->dev,
+					"[0x%p]Falied Alloc vditmpbuf[0]\n", (void *)t);
+			return;
+		}
+		memset(vditmpbuf[0], 0, vdi_size);
+
+		vditmpbuf[1] = (char *)kmalloc(vdi_size, GFP_KERNEL);
+		if (vditmpbuf[1] == NULL) {
+			dev_err(t->dev,
+					"[0x%p]Falied Alloc vditmpbuf[1]\n", (void *)t);
+			return;
+		}
+		memset(vditmpbuf[1], 0, vdi_size);
+
+		old_save_lines = vdi_save_lines;
+		old_size = vdi_size;
+	}
+
+	/* UP stripe or UP&LEFT stripe */
+	if ((stripe_mode == UP_STRIPE) ||
+			(stripe_mode == (UP_STRIPE | LEFT_STRIPE))) {
+		if (!buf0filled) {
+
+			offset_addr = t->set.o_off +
+				t->set.sp_setting.ud_split_line*t->set.ostride;
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + vdi_size);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + vdi_size);
+
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(vditmpbuf[0] + i*t->output.crop.w*2,
+						base_off + offset_addr + i*t->set.ostride,
+						t->output.crop.w*2);
+			buf0filled = true;
+		} else {
+			offset_addr = t->set.o_off +
+					(t->output.crop.h - vdi_save_lines)*t->set.ostride;
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(base_off + offset_addr + i*t->set.ostride,
+						vditmpbuf[0] + i*t->output.crop.w*2,
+						t->output.crop.w*2);
+
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + i*t->set.ostride);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + i*t->set.ostride);
+			buf0filled = false;
+		}
+	}
+	/*Down stripe or Down&Left stripe*/
+	else if ((stripe_mode == DOWN_STRIPE) ||
+			(stripe_mode == (DOWN_STRIPE | LEFT_STRIPE))) {
+		if (!buf0filled) {
+			offset_addr = t->set.o_off + vdi_save_lines*t->set.ostride;
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + vdi_size);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + vdi_size);
+
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(vditmpbuf[0] + i*t->output.crop.w*2,
+						base_off + offset_addr + i*t->set.ostride,
+						t->output.crop.w*2);
+			buf0filled = true;
+		} else {
+			offset_addr = t->set.o_off;
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(base_off + offset_addr + i*t->set.ostride,
+						vditmpbuf[0] + i*t->output.crop.w*2,
+						t->output.crop.w*2);
+
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + i*t->set.ostride);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + i*t->set.ostride);
+			buf0filled = false;
+		}
+	}
+	/*Up&Right stripe*/
+	else if (stripe_mode == (UP_STRIPE | RIGHT_STRIPE)) {
+		if (!buf1filled) {
+			offset_addr = t->set.o_off +
+				t->set.sp_setting.ud_split_line*t->set.ostride;
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + vdi_size);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + vdi_size);
+
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(vditmpbuf[1] + i*t->output.crop.w*2,
+						base_off + offset_addr + i*t->set.ostride,
+						t->output.crop.w*2);
+			buf1filled = true;
+		} else {
+			offset_addr = t->set.o_off +
+				(t->output.crop.h - vdi_save_lines)*t->set.ostride;
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(base_off + offset_addr + i*t->set.ostride,
+						vditmpbuf[1] + i*t->output.crop.w*2,
+						t->output.crop.w*2);
+
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + i*t->set.ostride);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + i*t->set.ostride);
+			buf1filled = false;
+		}
+	}
+	/*Down stripe or Down&Right stript*/
+	else if (stripe_mode == (DOWN_STRIPE | RIGHT_STRIPE)) {
+		if (!buf1filled) {
+			offset_addr = t->set.o_off + vdi_save_lines*t->set.ostride;
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + vdi_save_lines*t->set.ostride);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + vdi_save_lines*t->set.ostride);
+
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(vditmpbuf[1] + i*t->output.crop.w*2,
+						base_off + offset_addr + i*t->set.ostride,
+						t->output.crop.w*2);
+			buf1filled = true;
+		} else {
+			offset_addr = t->set.o_off;
+			for (i = 0; i < vdi_save_lines; i++)
+				memcpy(base_off + offset_addr + i*t->set.ostride,
+						vditmpbuf[1] + i*t->output.crop.w*2,
+						t->output.crop.w*2);
+
+			dmac_flush_range(base_off + offset_addr,
+					base_off + offset_addr + vdi_save_lines*t->set.ostride);
+			outer_flush_range(t->output.paddr + offset_addr,
+					t->output.paddr + offset_addr + vdi_save_lines*t->set.ostride);
+			buf1filled = false;
+		}
+	}
+}
+
 static void do_task(struct ipu_soc *ipu, struct ipu_task_entry *t)
 {
 	struct completion comp;
-	void *r_vaddr;
 	int r_size;
 	int irq;
 	int ret;
@@ -1657,6 +1868,8 @@ static void do_task(struct ipu_soc *ipu, struct ipu_task_entry *t)
 		if (ret < 0)
 			goto chan_done;
 	} else if (ic_and_rot(t->set.mode)) {
+		int rot_idx = (t->task_id == IPU_TASK_ID_VF) ? 0 : 1;
+
 		dev_dbg(t->dev, "[0x%p]ic + rot mode\n", (void *)t);
 		t->set.r_fmt = t->output.format;
 		if (t->output.rotate >= IPU_ROTATE_90_RIGHT) {
@@ -1668,16 +1881,29 @@ static void do_task(struct ipu_soc *ipu, struct ipu_task_entry *t)
 		}
 		t->set.r_stride = t->set.r_width *
 			bytes_per_pixel(t->set.r_fmt);
-		r_size = t->set.r_width * t->set.r_height
-			* fmt_to_bpp(t->set.r_fmt)/8;
-		r_vaddr = dma_alloc_coherent(t->dev,
-					  r_size,
-					  &t->set.r_paddr,
-					  GFP_DMA | GFP_KERNEL);
-		if (r_vaddr == NULL) {
-			ret = -ENOMEM;
-			goto chan_done;
+		r_size = PAGE_ALIGN(t->set.r_width * t->set.r_height
+			* fmt_to_bpp(t->set.r_fmt)/8);
+
+		if (r_size > ipu->rot_dma[rot_idx].size) {
+			dev_dbg(t->dev, "[0x%p]realloc rot buffer\n", (void *)t);
+
+			if (ipu->rot_dma[rot_idx].vaddr)
+				dma_free_coherent(t->dev,
+					ipu->rot_dma[rot_idx].size,
+					ipu->rot_dma[rot_idx].vaddr,
+					ipu->rot_dma[rot_idx].paddr);
+
+			ipu->rot_dma[rot_idx].size = r_size;
+			ipu->rot_dma[rot_idx].vaddr = dma_alloc_coherent(t->dev,
+						r_size,
+						&ipu->rot_dma[rot_idx].paddr,
+						GFP_DMA | GFP_KERNEL);
+			if (ipu->rot_dma[rot_idx].vaddr == NULL) {
+				ret = -ENOMEM;
+				goto chan_done;
+			}
 		}
+		t->set.r_paddr = ipu->rot_dma[rot_idx].paddr;
 
 		dev_dbg(t->dev, "[0x%p]rotation:\n", (void *)t);
 		dev_dbg(t->dev, "[0x%p]\tformat = 0x%x\n", (void *)t, t->set.r_fmt);
@@ -1703,6 +1929,7 @@ static void do_task(struct ipu_soc *ipu, struct ipu_task_entry *t)
 		return;
 	}
 
+	/* channel setup */
 	/* irq setup */
 	irq = get_irq(t);
 	if (irq < 0) {
@@ -1755,16 +1982,21 @@ static void do_task(struct ipu_soc *ipu, struct ipu_task_entry *t)
 			if (t->overlay.alpha.mode == IPU_ALPHA_MODE_LOCAL)
 				ipu_select_buffer(ipu, t->set.ic_chan, IPU_ALPHA_IN_BUFFER, 0);
 		}
+		ipu_select_buffer(ipu, t->set.ic_chan, IPU_OUTPUT_BUFFER, 0);
 		if (deinterlace_3_field(t))
 			ipu_select_multi_vdi_buffer(ipu, 0);
 		else
 			ipu_select_buffer(ipu, t->set.ic_chan, IPU_INPUT_BUFFER, 0);
-		ipu_select_buffer(ipu, t->set.ic_chan, IPU_OUTPUT_BUFFER, 0);
 	}
 
 	ret = wait_for_completion_timeout(&comp, msecs_to_jiffies(t->timeout));
 	if (ret == 0)
 		t->state = STATE_IRQ_TIMEOUT;
+
+	/* split mode and VDI mode */
+	if (t->input.deinterlace.enable &&
+			(t->task_no & (UP_STRIPE | DOWN_STRIPE)))
+		vdi_split_process(ipu, t);
 
 	ipu_free_irq(ipu, irq, &comp);
 
@@ -1777,12 +2009,13 @@ static void do_task(struct ipu_soc *ipu, struct ipu_task_entry *t)
 	} else if (only_rot(t->set.mode))
 		ipu_disable_channel(ipu, t->set.rot_chan, true);
 	else if (ic_and_rot(t->set.mode)) {
+		ipu_unlink_channels(ipu, t->set.ic_chan, t->set.rot_chan);
+		ipu_disable_channel(ipu, t->set.rot_chan, true);
 		ipu_disable_channel(ipu, t->set.ic_chan, true);
 		if (deinterlace_3_field(t)) {
 			ipu_disable_channel(ipu, t->set.vdi_ic_p_chan, true);
 			ipu_disable_channel(ipu, t->set.vdi_ic_n_chan, true);
 		}
-		ipu_disable_channel(ipu, t->set.rot_chan, true);
 	}
 
 chan_done:
@@ -1791,15 +2024,8 @@ chan_done:
 	else if (only_rot(t->set.mode))
 		uninit_rot(ipu, t);
 	else if (ic_and_rot(t->set.mode)) {
-		ipu_unlink_channels(ipu, t->set.ic_chan,
-			t->set.rot_chan);
 		uninit_ic(ipu, t);
 		uninit_rot(ipu, t);
-		if (r_vaddr)
-			dma_free_coherent(t->dev,
-					r_size,
-					r_vaddr,
-					t->set.r_paddr);
 	}
 	return;
 }
@@ -2008,7 +2234,7 @@ static struct file_operations mxc_ipu_fops = {
 
 int register_ipu_device(struct ipu_soc *ipu, int id)
 {
-	int ret = 0;
+	int i, ret = 0;
 
 	if (!major) {
 		major = register_chrdev(0, "mxc_ipu", &mxc_ipu_fops);
@@ -2035,12 +2261,14 @@ int register_ipu_device(struct ipu_soc *ipu, int id)
 		ipu_dev->coherent_dma_mask = DMA_BIT_MASK(32);
 	}
 
-	INIT_LIST_HEAD(&ipu->task_list[0]);
-	INIT_LIST_HEAD(&ipu->task_list[1]);
-	init_waitqueue_head(&ipu->waitq[0]);
-	init_waitqueue_head(&ipu->waitq[1]);
-	mutex_init(&ipu->task_lock[0]);
-	mutex_init(&ipu->task_lock[1]);
+	for (i = 0; i < 2; i++) {
+		INIT_LIST_HEAD(&ipu->task_list[i]);
+		init_waitqueue_head(&ipu->waitq[i]);
+		mutex_init(&ipu->task_lock[i]);
+
+		ipu->rot_dma[i].size = 0;
+	}
+
 	ipu->thread[0] = kthread_run(task_vf_thread, ipu,
 					"ipu%d_process-vf", id);
 	if (IS_ERR(ipu->thread[0])) {
@@ -2076,8 +2304,19 @@ register_cdev_fail:
 
 void unregister_ipu_device(struct ipu_soc *ipu, int id)
 {
+	int i;
+
 	kthread_stop(ipu->thread[0]);
 	kthread_stop(ipu->thread[1]);
+
+	for (i = 0; i < 2; i++) {
+		if (ipu->rot_dma[i].vaddr)
+			dma_free_coherent(ipu_dev,
+				ipu->rot_dma[i].size,
+				ipu->rot_dma[i].vaddr,
+				ipu->rot_dma[i].paddr);
+	}
+
 	if (major) {
 		device_destroy(ipu_class, MKDEV(major, 0));
 		class_destroy(ipu_class);

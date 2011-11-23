@@ -25,6 +25,7 @@
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
+#include <linux/export.h>
 #include <mach/ipu-v3.h>
 
 #include "ipu_prv.h"
@@ -168,7 +169,7 @@ ipu_csi_init_interface(struct ipu_soc *ipu, uint16_t width, uint16_t height,
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_csi_init_interface);
+EXPORT_SYMBOL_GPL(ipu_csi_init_interface);
 
 /*!
  * ipu_csi_get_sensor_protocol
@@ -184,7 +185,7 @@ int32_t ipu_csi_get_sensor_protocol(struct ipu_soc *ipu, uint32_t csi)
 		CSI_SENS_CONF_SENS_PRTCL_MASK) >>
 		CSI_SENS_CONF_SENS_PRTCL_SHIFT;
 }
-EXPORT_SYMBOL(ipu_csi_get_sensor_protocol);
+EXPORT_SYMBOL_GPL(ipu_csi_get_sensor_protocol);
 
 /*!
  * _ipu_csi_mclk_set
@@ -237,7 +238,7 @@ int ipu_csi_enable_mclk(struct ipu_soc *ipu, int csi, bool flag, bool wait)
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_csi_enable_mclk);
+EXPORT_SYMBOL_GPL(ipu_csi_enable_mclk);
 
 /*!
  * ipu_csi_get_window_size
@@ -263,7 +264,7 @@ void ipu_csi_get_window_size(struct ipu_soc *ipu, uint32_t *width, uint32_t *hei
 
 	_ipu_put(ipu);
 }
-EXPORT_SYMBOL(ipu_csi_get_window_size);
+EXPORT_SYMBOL_GPL(ipu_csi_get_window_size);
 
 /*!
  * ipu_csi_set_window_size
@@ -285,7 +286,7 @@ void ipu_csi_set_window_size(struct ipu_soc *ipu, uint32_t width, uint32_t heigh
 
 	_ipu_put(ipu);
 }
-EXPORT_SYMBOL(ipu_csi_set_window_size);
+EXPORT_SYMBOL_GPL(ipu_csi_set_window_size);
 
 /*!
  * ipu_csi_set_window_pos
@@ -312,7 +313,7 @@ void ipu_csi_set_window_pos(struct ipu_soc *ipu, uint32_t left, uint32_t top, ui
 
 	_ipu_put(ipu);
 }
-EXPORT_SYMBOL(ipu_csi_set_window_pos);
+EXPORT_SYMBOL_GPL(ipu_csi_set_window_pos);
 
 /*!
  * _ipu_csi_horizontal_downsize_enable

@@ -20,6 +20,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/export.h>
 #include <mach/ipu-v3.h>
 #include <asm/div64.h>
 
@@ -52,8 +53,8 @@ static u32 truncate(u32 up, /* 0: down; else: up */
 		return d;
 }
 
-/*static unsigned int f_calc(unsigned int pfs, unsigned int bpp, unsigned int *write)
-{[> return input_f <]
+static unsigned int f_calc(unsigned int pfs, unsigned int bpp, unsigned int *write)
+{/* return input_f */
 	unsigned int f_calculated = 0;
 	switch (pfs) {
 	case IPU_PIX_FMT_YVU422P:
@@ -129,7 +130,7 @@ static unsigned int m_calc(unsigned int pfs)
 
 	}
 	return m_calculated;
-}*/
+}
 
 
 /* Stripe parameters calculator */
@@ -214,14 +215,14 @@ int ipu_calc_stripes_sizes(const unsigned int input_frame_width,
 	/* M, F calculations */
 	/* read back pfs from params */
 
-	input_f = 16;
+	input_f = f_calc(input_pixelformat, 0, NULL);
 	input_m = 16;
 	/* BPP should be used in the out_F calc */
 	/* Temporarily not used */
 	/* out_F = F_calc(idmac->pfs, idmac->bpp, NULL); */
 
 	output_f = 16;
-	output_m = 16;
+	output_m = m_calc(output_pixelformat);
 
 
 	if ((input_frame_width < 4) || (output_frame_width < 4))
@@ -370,7 +371,6 @@ int ipu_calc_stripes_sizes(const unsigned int input_frame_width,
 		left->output_column = 0;
 		right->output_column = onw;
 	}
-
 	return status;
 }
-EXPORT_SYMBOL(ipu_calc_stripes_sizes);
+EXPORT_SYMBOL_GPL(ipu_calc_stripes_sizes);

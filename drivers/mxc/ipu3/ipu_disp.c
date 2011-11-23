@@ -26,6 +26,7 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/export.h>
 #include <asm/atomic.h>
 #include <mach/clock.h>
 #include <mach/ipu-v3.h>
@@ -59,7 +60,12 @@ static inline struct ipu_soc *pixelclk2ipu(struct clk *clk)
 static unsigned long _ipu_pixel_clk_get_rate(struct clk *clk)
 {
 	struct ipu_soc *ipu = pixelclk2ipu(clk);
-	u32 div = ipu_di_read(ipu, clk->id, DI_BS_CLKGEN0);
+	u32 div;
+
+	_ipu_get(ipu);
+	div = ipu_di_read(ipu, clk->id, DI_BS_CLKGEN0);
+	_ipu_put(ipu);
+
 	if (div == 0)
 		return 0;
 	return  (clk_get_rate(clk->parent) * 16) / div;
@@ -1119,7 +1125,7 @@ void ipu_set_csc_coefficients(struct ipu_soc *ipu, ipu_channel_t channel, int32_
 {
 	_ipu_dp_set_csc_coefficients(ipu, channel, param);
 }
-EXPORT_SYMBOL(ipu_set_csc_coefficients);
+EXPORT_SYMBOL_GPL(ipu_set_csc_coefficients);
 
 /*!
  * This function is called to adapt synchronous LCD panel to IPU restriction.
@@ -1656,7 +1662,7 @@ int32_t ipu_init_sync_panel(struct ipu_soc *ipu, int disp, uint32_t pixel_clk,
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_init_sync_panel);
+EXPORT_SYMBOL_GPL(ipu_init_sync_panel);
 
 void ipu_uninit_sync_panel(struct ipu_soc *ipu, int disp)
 {
@@ -1678,7 +1684,7 @@ void ipu_uninit_sync_panel(struct ipu_soc *ipu, int disp)
 
 	_ipu_unlock(ipu);
 }
-EXPORT_SYMBOL(ipu_uninit_sync_panel);
+EXPORT_SYMBOL_GPL(ipu_uninit_sync_panel);
 
 int ipu_init_async_panel(struct ipu_soc *ipu, int disp, int type, uint32_t cycle_time,
 			 uint32_t pixel_fmt, ipu_adc_sig_cfg_t sig)
@@ -1728,7 +1734,7 @@ int ipu_init_async_panel(struct ipu_soc *ipu, int disp, int type, uint32_t cycle
 	_ipu_unlock(ipu);
 	return 0;
 }
-EXPORT_SYMBOL(ipu_init_async_panel);
+EXPORT_SYMBOL_GPL(ipu_init_async_panel);
 
 /*!
  * This function sets the foreground and background plane global alpha blending
@@ -1800,7 +1806,7 @@ int32_t ipu_disp_set_global_alpha(struct ipu_soc *ipu, ipu_channel_t channel,
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_disp_set_global_alpha);
+EXPORT_SYMBOL_GPL(ipu_disp_set_global_alpha);
 
 /*!
  * This function sets the transparent color key for SDC graphic plane.
@@ -1877,7 +1883,7 @@ int32_t ipu_disp_set_color_key(struct ipu_soc *ipu, ipu_channel_t channel,
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_disp_set_color_key);
+EXPORT_SYMBOL_GPL(ipu_disp_set_color_key);
 
 /*!
  * This function sets the gamma correction for DP output.
@@ -1935,7 +1941,7 @@ int32_t ipu_disp_set_gamma_correction(struct ipu_soc *ipu, ipu_channel_t channel
 
 	return 0;
 }
-EXPORT_SYMBOL(ipu_disp_set_gamma_correction);
+EXPORT_SYMBOL_GPL(ipu_disp_set_gamma_correction);
 
 /*!
  * This function sets the window position of the foreground or background plane.
@@ -1999,7 +2005,7 @@ int32_t ipu_disp_set_window_pos(struct ipu_soc *ipu, ipu_channel_t channel,
 	_ipu_put(ipu);
 	return ret;
 }
-EXPORT_SYMBOL(ipu_disp_set_window_pos);
+EXPORT_SYMBOL_GPL(ipu_disp_set_window_pos);
 
 int32_t _ipu_disp_get_window_pos(struct ipu_soc *ipu, ipu_channel_t channel,
 				int16_t *x_pos, int16_t *y_pos)
@@ -2035,7 +2041,7 @@ int32_t ipu_disp_get_window_pos(struct ipu_soc *ipu, ipu_channel_t channel,
 	_ipu_put(ipu);
 	return ret;
 }
-EXPORT_SYMBOL(ipu_disp_get_window_pos);
+EXPORT_SYMBOL_GPL(ipu_disp_get_window_pos);
 
 void ipu_disp_direct_write(struct ipu_soc *ipu, ipu_channel_t channel, u32 value, u32 offset)
 {
@@ -2044,7 +2050,7 @@ void ipu_disp_direct_write(struct ipu_soc *ipu, ipu_channel_t channel, u32 value
 	else if (channel == DIRECT_ASYNC1)
 		writel(value, ipu->disp_base[1] + offset);
 }
-EXPORT_SYMBOL(ipu_disp_direct_write);
+EXPORT_SYMBOL_GPL(ipu_disp_direct_write);
 
 void ipu_reset_disp_panel(struct ipu_soc *ipu)
 {
@@ -2059,7 +2065,7 @@ void ipu_reset_disp_panel(struct ipu_soc *ipu)
 
 	return;
 }
-EXPORT_SYMBOL(ipu_reset_disp_panel);
+EXPORT_SYMBOL_GPL(ipu_reset_disp_panel);
 
 void __devinit ipu_disp_init(struct ipu_soc *ipu)
 {
