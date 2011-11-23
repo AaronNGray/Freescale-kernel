@@ -28,7 +28,8 @@
  */
 #include <linux/i2c.h>
 #include <linux/fb.h>
-#include "mxc_edid.h"
+#include <linux/export.h>
+#include <mach/mxc_edid.h>
 #include "../edid.h"
 
 #undef DEBUG  /* define this for verbose EDID parsing output */
@@ -40,79 +41,119 @@
 #endif
 
 const struct fb_videomode mxc_cea_mode[64] = {
-	/* #1: 640x480p@59.94/60Hz */
+	/* #1: 640x480p@59.94/60Hz 4:3 */
 	[1] = {
 		NULL, 60, 640, 480, 39722, 48, 16, 33, 10, 96, 2, 0,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_4_3, 0,
 	},
-	/* #3: 720x480p@59.94/60Hz */
+	/* #2: 720x480p@59.94/60Hz 4:3 */
+	[2] = {
+		NULL, 60, 720, 480, 37037, 60, 16, 30, 9, 62, 6, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_4_3, 0,
+	},
+	/* #3: 720x480p@59.94/60Hz 16:9 */
 	[3] = {
 		NULL, 60, 720, 480, 37037, 60, 16, 30, 9, 62, 6, 0,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
-	/* #4: 1280x720p@59.94/60Hz */
+	/* #4: 1280x720p@59.94/60Hz 16:9 */
 	[4] = {
 		NULL, 60, 1280, 720, 13468, 220, 110, 20, 5, 40, 5,
 		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0
 	},
-	/* #5: 1920x1080i@59.94/60Hz */
+	/* #5: 1920x1080i@59.94/60Hz 16:9 */
 	[5] = {
 		NULL, 60, 1920, 1080, 13763, 148, 88, 15, 2, 44, 5,
 		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-		FB_VMODE_INTERLACED, 0,
+		FB_VMODE_INTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
-	/* #7: 720(1440)x480iH@59.94/60Hz */
+	/* #6: 720(1440)x480iH@59.94/60Hz 4:3 */
+	[6] = {
+		NULL, 60, 1440, 480, 18554/*37108*/, 114, 38, 15, 4, 124, 3, 0,
+		FB_VMODE_INTERLACED | FB_VMODE_ASPECT_4_3, 0,
+	},
+	/* #7: 720(1440)x480iH@59.94/60Hz 16:9 */
 	[7] = {
 		NULL, 60, 1440, 480, 18554/*37108*/, 114, 38, 15, 4, 124, 3, 0,
-		FB_VMODE_INTERLACED, 0,
+		FB_VMODE_INTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
-	/* #9: 720(1440)x240pH@59.94/60Hz */
+	/* #8: 720(1440)x240pH@59.94/60Hz 4:3 */
+	[8] = {
+		NULL, 60, 1440, 240, 18554, 114, 38, 16, 4, 124, 3, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
+	},
+	/* #9: 720(1440)x240pH@59.94/60Hz 16:9 */
 	[9] = {
 		NULL, 60, 1440, 240, 18554, 114, 38, 16, 4, 124, 3, 0,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
-	/* #16: 1920x1080p@60Hz */
+	/* #16: 1920x1080p@60Hz 16:9 */
 	[16] = {
 		NULL, 60, 1920, 1080, 6734, 148, 88, 36, 4, 44, 5,
 		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
-	/* #18: 720x576pH@50Hz */
+	/* #17: 720x576pH@50Hz 4:3 */
+	[17] = {
+		NULL, 50, 720, 576, 37037, 68, 12, 39, 5, 64, 5, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_4_3, 0,
+	},
+	/* #18: 720x576pH@50Hz 16:9 */
 	[18] = {
 		NULL, 50, 720, 576, 37037, 68, 12, 39, 5, 64, 5, 0,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
 	/* #19: 1280x720p@50Hz */
 	[19] = {
 		NULL, 50, 1280, 720, 13468, 220, 440, 20, 5, 40, 5,
 		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
 	/* #20: 1920x1080i@50Hz */
 	[20] = {
 		NULL, 50, 1920, 1080, 13480, 148, 528, 15, 5, 528, 5,
 		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-		FB_VMODE_INTERLACED, 0,
+		FB_VMODE_INTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
 	/* #31: 1920x1080p@50Hz */
 	[31] = {
 		NULL, 50, 1920, 1080, 6734, 148, 528, 36, 4, 44, 5,
 		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
 	/* #32: 1920x1080p@23.98/24Hz */
 	[32] = {
 		NULL, 24, 1920, 1080, 13468, 148, 638, 36, 4, 44, 5,
 		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_16_9, 0,
 	},
 	/* #35: (2880)x480p4x@59.94/60Hz */
 	[35] = {
 		NULL, 60, 2880, 480, 9250, 240, 64, 30, 9, 248, 6, 0,
-		FB_VMODE_NONINTERLACED, 0,
+		FB_VMODE_NONINTERLACED | FB_VMODE_ASPECT_4_3, 0,
 	},
 };
+
+/*
+ * We have a special version of fb_mode_is_equal that ignores
+ * pixclock, since for many CEA modes, 2 frequencies are supported
+ * e.g. 640x480 @ 60Hz or 59.94Hz
+ */
+int mxc_edid_fb_mode_is_equal(const struct fb_videomode *mode1,
+		     const struct fb_videomode *mode2)
+{
+	return (mode1->xres         == mode2->xres &&
+		mode1->yres         == mode2->yres &&
+		mode1->hsync_len    == mode2->hsync_len &&
+		mode1->vsync_len    == mode2->vsync_len &&
+		mode1->left_margin  == mode2->left_margin &&
+		mode1->right_margin == mode2->right_margin &&
+		mode1->upper_margin == mode2->upper_margin &&
+		mode1->lower_margin == mode2->lower_margin &&
+		mode1->sync         == mode2->sync &&
+		mode1->vmode        == mode2->vmode);
+}
 
 static void get_detailed_timing(unsigned char *block,
 				struct fb_videomode *mode)
@@ -303,29 +344,9 @@ int mxc_edid_parse_ext_blk(unsigned char *edid,
 	return 0;
 }
 
-static char compal_edid[256] = {
-0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x38, 0xA3, 0x75, 0x67, 0x01, 0x01, 0x01, 0x01,
-0x02, 0x13, 0x01, 0x03, 0x80, 0x33, 0x1D, 0x78, 0xEA, 0xEE, 0x95, 0xA3, 0x54, 0x4C, 0x99, 0x26,
-0x0F, 0x50, 0x54, 0xBD, 0xEF, 0x80, 0x71, 0x4F, 0x81, 0x4F, 0x90, 0x40, 0x81, 0xC0, 0x81, 0x80,
-0x95, 0x00, 0xB3, 0x00, 0x01, 0x01, 0x02, 0x3A, 0x80, 0x18, 0x71, 0x38, 0x2D, 0x40, 0x58, 0x2C,
-0x45, 0x00, 0xFD, 0x1E, 0x11, 0x00, 0x00, 0x1E, 0x66, 0x21, 0x56, 0xAA, 0x51, 0x00, 0x1E, 0x30,
-0x46, 0x8F, 0x33, 0x00, 0xFE, 0x1F, 0x11, 0x00, 0x00, 0x1E, 0x00, 0x00, 0x00, 0xFD, 0x00, 0x37,
-0x4C, 0x1E, 0x53, 0x11, 0x00, 0x0A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0xFC,
-0x00, 0x46, 0x32, 0x33, 0x57, 0x31, 0x41, 0x0A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x01, 0x32,
-0x02, 0x03, 0x24, 0x71, 0x4A, 0x90, 0x05, 0x04, 0x03, 0x07, 0x1F, 0x14, 0x13, 0x12, 0x16, 0x23,
-0x09, 0x07, 0x07, 0x83, 0x01, 0x00, 0x00, 0x6C, 0x03, 0x0C, 0x00, 0x10, 0x00, 0x00, 0x00, 0xC0,
-0x15, 0x15, 0x1F, 0x1F, 0x01, 0x1D, 0x80, 0x18, 0x71, 0x1C, 0x16, 0x20, 0x58, 0x2C, 0x25, 0x00,
-0xFE, 0x1F, 0x11, 0x00, 0x00, 0x9E, 0x01, 0x1D, 0x00, 0x72, 0x51, 0xD0, 0x1E, 0x20, 0x6E, 0x28,
-0x55, 0x00, 0xFE, 0x1F, 0x11, 0x00, 0x00, 0x1E, 0x8C, 0x0A, 0xD0, 0x8A, 0x20, 0xE0, 0x2D, 0x10,
-0x10, 0x3E, 0x96, 0x00, 0xFE, 0x1F, 0x11, 0x00, 0x00, 0x18, 0x8C, 0x0A, 0xA0, 0x14, 0x51, 0xF0,
-0x16, 0x00, 0x26, 0x7C, 0x43, 0x00, 0xFE, 0x1F, 0x11, 0x00, 0x00, 0x98, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE3,
-};
-
 static int mxc_edid_readblk(struct i2c_adapter *adp,
 		unsigned short addr, unsigned char *edid)
 {
-#if 0
 	int ret = 0, extblknum = 0;
 	unsigned char regaddr = 0x0;
 	struct i2c_msg msg[2] = {
@@ -365,10 +386,6 @@ static int mxc_edid_readblk(struct i2c_adapter *adp,
 	}
 
 	return extblknum;
-#else
-	memcpy(edid, compal_edid, 256);
-	return 1;
-#endif
 }
 
 static int mxc_edid_readsegblk(struct i2c_adapter *adp, unsigned short addr,
@@ -422,7 +439,7 @@ int mxc_edid_var_to_vic(struct fb_var_screeninfo *var)
 
 	for (i = 0; i < ARRAY_SIZE(mxc_cea_mode); i++) {
 		fb_var_to_videomode(&m, var);
-		if (fb_mode_is_equal(&m, &mxc_cea_mode[i]))
+		if (mxc_edid_fb_mode_is_equal(&m, &mxc_cea_mode[i]))
 			break;
 	}
 
@@ -431,7 +448,24 @@ int mxc_edid_var_to_vic(struct fb_var_screeninfo *var)
 
 	return i;
 }
+
 EXPORT_SYMBOL(mxc_edid_var_to_vic);
+
+int mxc_edid_mode_to_vic(const struct fb_videomode *mode)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mxc_cea_mode); i++) {
+		if (mxc_edid_fb_mode_is_equal(mode, &mxc_cea_mode[i]))
+			break;
+	}
+
+	if (i == ARRAY_SIZE(mxc_cea_mode))
+		return 0;
+
+	return i;
+}
+EXPORT_SYMBOL(mxc_edid_mode_to_vic);
 
 /* make sure edid has 512 bytes*/
 int mxc_edid_read(struct i2c_adapter *adp, unsigned short addr,

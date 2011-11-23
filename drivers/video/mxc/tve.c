@@ -38,7 +38,6 @@
 #include <linux/uaccess.h>
 #include <asm/atomic.h>
 #include <mach/hardware.h>
-#include <mach/ipu-v3.h>
 #include "mxc_dispdrv.h"
 
 #define TVE_ENABLE			(1UL)

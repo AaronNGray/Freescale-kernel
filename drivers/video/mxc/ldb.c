@@ -33,6 +33,7 @@
 #include <linux/io.h>
 #include <linux/ipu.h>
 #include <linux/mxcfb.h>
+#include <linux/module.h>
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
 #include <linux/fsl_devices.h>
@@ -296,6 +297,116 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 	return 0;
 }
 
+#define LVDS0_MUX_CTL_MASK	(3 << 6)
+#define LVDS1_MUX_CTL_MASK	(3 << 8)
+#define LVDS0_MUX_CTL_OFFS	6
+#define LVDS1_MUX_CTL_OFFS	8
+#define ROUTE_IPU0_DI0		0
+#define ROUTE_IPU0_DI1		1
+#define ROUTE_IPU1_DI0		2
+#define ROUTE_IPU1_DI1		3
+static int ldb_ipu_ldb_route(int ipu, int di, struct ldb_data *ldb)
+{
+	uint32_t reg;
+	int mode = ldb->mode;
+
+	reg = readl(ldb->gpr3_reg);
+	if ((mode == LDB_SPL_DI0) || (mode == LDB_DUL_DI0)) {
+		reg &= ~(LVDS0_MUX_CTL_MASK | LVDS1_MUX_CTL_MASK);
+		if (ipu == 0)
+			reg |= (ROUTE_IPU0_DI0 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU0_DI0 << LVDS1_MUX_CTL_OFFS);
+		else
+			reg |= (ROUTE_IPU1_DI0 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU1_DI0 << LVDS1_MUX_CTL_OFFS);
+		dev_dbg(&ldb->pdev->dev,
+			"Dual/Split mode both channels route to IPU%d-DI0\n", ipu);
+	} else if ((mode == LDB_SPL_DI1) || (mode == LDB_DUL_DI1)) {
+		reg &= ~(LVDS0_MUX_CTL_MASK | LVDS1_MUX_CTL_MASK);
+		if (ipu == 0)
+			reg |= (ROUTE_IPU0_DI1 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU0_DI1 << LVDS1_MUX_CTL_OFFS);
+		else
+			reg |= (ROUTE_IPU1_DI1 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU1_DI1 << LVDS1_MUX_CTL_OFFS);
+		dev_dbg(&ldb->pdev->dev,
+			"Dual/Split mode both channels route to IPU%d-DI1\n", ipu);
+	} else if (mode == LDB_SIN0) {
+		reg &= ~LVDS0_MUX_CTL_MASK;
+		if ((ipu == 0) && (di == 0))
+			reg |= ROUTE_IPU0_DI0 << LVDS0_MUX_CTL_OFFS;
+		else if ((ipu == 0) && (di == 1))
+			reg |= ROUTE_IPU0_DI1 << LVDS0_MUX_CTL_OFFS;
+		else if ((ipu == 1) && (di == 0))
+			reg |= ROUTE_IPU1_DI0 << LVDS0_MUX_CTL_OFFS;
+		else
+			reg |= ROUTE_IPU1_DI1 << LVDS0_MUX_CTL_OFFS;
+		dev_dbg(&ldb->pdev->dev,
+			"Single mode channel 0 route to IPU%d-DI%d\n", ipu, di);
+	} else if (mode == LDB_SIN1) {
+		reg &= ~LVDS1_MUX_CTL_MASK;
+		if ((ipu == 0) && (di == 0))
+			reg |= ROUTE_IPU0_DI0 << LVDS1_MUX_CTL_OFFS;
+		else if ((ipu == 0) && (di == 1))
+			reg |= ROUTE_IPU0_DI1 << LVDS1_MUX_CTL_OFFS;
+		else if ((ipu == 1) && (di == 0))
+			reg |= ROUTE_IPU1_DI0 << LVDS1_MUX_CTL_OFFS;
+		else
+			reg |= ROUTE_IPU1_DI1 << LVDS1_MUX_CTL_OFFS;
+		dev_dbg(&ldb->pdev->dev,
+			"Single mode channel 1 route to IPU%d-DI%d\n", ipu, di);
+	} else {
+		static bool first = true;
+		int channel;
+
+		if (first) {
+			if (mode == LDB_SEP0) {
+				reg &= ~LVDS0_MUX_CTL_MASK;
+				channel = 0;
+			} else {
+				reg &= ~LVDS1_MUX_CTL_MASK;
+				channel = 1;
+			}
+			first = false;
+		} else {
+			if (mode == LDB_SEP0) {
+				reg &= ~LVDS1_MUX_CTL_MASK;
+				channel = 1;
+			} else {
+				reg &= ~LVDS0_MUX_CTL_MASK;
+				channel = 0;
+			}
+		}
+
+		if ((ipu == 0) && (di == 0)) {
+			if (channel == 0)
+				reg |= ROUTE_IPU0_DI0 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU0_DI0 << LVDS1_MUX_CTL_OFFS;
+		} else if ((ipu == 0) && (di == 1)) {
+			if (channel == 0)
+				reg |= ROUTE_IPU0_DI1 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU0_DI1 << LVDS1_MUX_CTL_OFFS;
+		} else if ((ipu == 1) && (di == 0)) {
+			if (channel == 0)
+				reg |= ROUTE_IPU1_DI0 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU1_DI0 << LVDS1_MUX_CTL_OFFS;
+		} else {
+			if (channel == 0)
+				reg |= ROUTE_IPU1_DI1 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU1_DI1 << LVDS1_MUX_CTL_OFFS;
+		}
+
+		dev_dbg(&ldb->pdev->dev, "Separate mode channel %d route to IPU%d-DI%d\n", channel, ipu, di);
+	}
+	writel(reg, ldb->gpr3_reg);
+
+	return 0;
+}
+
 static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 {
 	int ret = 0, i;
@@ -429,7 +540,11 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		writel(reg, ldb->control_reg);
 
 		/* clock setting */
-		ldb_clk[6] += setting->disp_id;
+		if (cpu_is_mx6q() &&
+			((ldb->mode == LDB_SEP0) || (ldb->mode == LDB_SEP1)))
+			ldb_clk[6] += lvds_channel;
+		else
+			ldb_clk[6] += setting->disp_id;
 		ldb->ldb_di_clk[0] = clk_get(&ldb->pdev->dev, ldb_clk);
 		if (IS_ERR(ldb->ldb_di_clk[0])) {
 			dev_err(&ldb->pdev->dev, "get ldb clk0 failed\n");
@@ -473,8 +588,13 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 			return -EINVAL;
 		}
 
-		setting->dev_id = plat_data->ipu_id;
-		setting->disp_id = !plat_data->disp_id;
+		if (cpu_is_mx6q()) {
+			setting->dev_id = plat_data->sec_ipu_id;
+			setting->disp_id = plat_data->sec_disp_id;
+		} else {
+			setting->dev_id = plat_data->ipu_id;
+			setting->disp_id = !plat_data->disp_id;
+		}
 
 		/* second output is LVDS0 or LVDS1 */
 		if (ldb->mode == LDB_SEP0)
@@ -506,7 +626,10 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		writel(reg, ldb->control_reg);
 
 		/* clock setting */
-		ldb_clk[6] += setting->disp_id;
+		if (cpu_is_mx6q())
+			ldb_clk[6] += lvds_channel;
+		else
+			ldb_clk[6] += setting->disp_id;
 		ldb->ldb_di_clk[1] = clk_get(&ldb->pdev->dev, ldb_clk);
 		if (IS_ERR(ldb->ldb_di_clk[1])) {
 			dev_err(&ldb->pdev->dev, "get ldb clk1 failed\n");
@@ -523,6 +646,14 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		dev_dbg(&ldb->pdev->dev, "ldb_clk to di clk: %s -> %s\n", ldb_clk, di_clk);
 
 		setting_idx = 1;
+	}
+
+	if (cpu_is_mx6q()) {
+		reg = readl(ldb->control_reg);
+		reg &= ~(LDB_CH0_MODE_MASK | LDB_CH1_MODE_MASK);
+		reg |= LDB_CH0_MODE_EN_TO_DI0 | LDB_CH1_MODE_EN_TO_DI1;
+		writel(reg, ldb->control_reg);
+		ldb_ipu_ldb_route(setting->dev_id, setting->disp_id, ldb);
 	}
 
 	/*

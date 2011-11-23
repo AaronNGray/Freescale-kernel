@@ -36,6 +36,7 @@
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/string.h>
+#include <linux/export.h>
 #include "mxc_dispdrv.h"
 
 static LIST_HEAD(dispdrv_list);
