@@ -37,6 +37,7 @@
 #include <mach/clock.h>
 #include <mach/mxc_hdmi.h>
 #include <mach/ipu-v3.h>
+#include <mach/iomux-v3.h>
 #include "../mxc/ipu3/ipu_prv.h"
 #include <linux/mfd/mxc-hdmi-core.h>
 #include <linux/fsl_devices.h>
@@ -412,7 +413,7 @@ static void hdmi_init(int ipu_id, int disp_id)
 	hdmi_mux_setting = 2*ipu_id + disp_id;
 
 	/* GPR3, bits 2-3 = HDMI_MUX_CTL */
-	/*mxc_iomux_set_gpr_register(3, 2, 2, hdmi_mux_setting);*/
+	mxc_iomux_set_gpr_register(3, 2, 2, hdmi_mux_setting);
 }
 
 static struct fsl_mxc_hdmi_platform_data hdmi_vdata = {
