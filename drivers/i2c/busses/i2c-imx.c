@@ -130,6 +130,7 @@ struct imx_i2c_struct {
 
 static const struct of_device_id i2c_imx_dt_ids[] = {
 	{ .compatible = "fsl,imx1-i2c", },
+	{ .compatible = "fsl,imx6q-i2c", },
 	{ /* sentinel */ }
 };
 

@@ -572,6 +572,12 @@
 			};
 		};
 
+		hdmi@0x00120000 { /* HDMI */
+			compatible = "fsl,imx6q-hdmi-core";
+			reg = <0x00120000 0x9000>;
+			interrupts = <0 115 0x04 0 116 0x04>;
+		};
+
 		ipu@0x02400000 { /* IPU1 */
 			compatible = "fsl,ipuv3";
 			reg = <0x02400000 0x400000>;

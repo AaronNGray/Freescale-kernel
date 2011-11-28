@@ -46,6 +46,16 @@
 			uart1: uart@021e8000 { /* UART2 */
 				status = "okay";
 			};
+
+			i2c@021a4000 { /* I2C2 */
+				status = "okay";
+				clock-frequency = <400000>;
+
+				ddc: ddc@50 {
+					compatible = "fsl,imx6q-hdmi-ddc";
+					reg = <0x50>;
+				};
+			};
 		};
 	};
 

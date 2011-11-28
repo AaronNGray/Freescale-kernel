@@ -28,6 +28,7 @@
 #include <linux/spinlock.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
+#include <linux/dma-mapping.h>
 
 #include <linux/platform_device.h>
 #include <linux/regulator/machine.h>
@@ -391,12 +392,40 @@ void hdmi_set_sample_rate(unsigned int rate)
 	hdmi_set_clk_regenerator();
 }
 
+static void hdmi_init(int ipu_id, int disp_id)
+{
+	int hdmi_mux_setting;
+
+	if ((ipu_id > 1) || (ipu_id < 0)) {
+		printk(KERN_ERR"Invalid IPU select for HDMI: %d. Set to 0\n",
+			ipu_id);
+		ipu_id = 0;
+	}
+
+	if ((disp_id > 1) || (disp_id < 0)) {
+		printk(KERN_ERR"Invalid DI select for HDMI: %d. Set to 0\n",
+			disp_id);
+		disp_id = 0;
+	}
+
+	/* Configure the connection between IPU1/2 and HDMI */
+	hdmi_mux_setting = 2*ipu_id + disp_id;
+
+	/* GPR3, bits 2-3 = HDMI_MUX_CTL */
+	/*mxc_iomux_set_gpr_register(3, 2, 2, hdmi_mux_setting);*/
+}
+
+static struct fsl_mxc_hdmi_platform_data hdmi_vdata = {
+	.init = hdmi_init,
+};
+
 static int mxc_hdmi_core_probe(struct platform_device *pdev)
 {
 	struct fsl_mxc_hdmi_core_platform_data *pdata = pdev->dev.platform_data;
 	struct mxc_hdmi_data *hdmi_data;
 	struct resource *res;
 	int ret = 0;
+	struct platform_device_info pdevinfo_hdmi_v;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res)
@@ -480,6 +509,16 @@ static int mxc_hdmi_core_probe(struct platform_device *pdev)
 	/* Replace platform data coming in with a local struct */
 	platform_set_drvdata(pdev, hdmi_data);
 
+	/* register hdmi video */
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	pdevinfo_hdmi_v.name = "mxc_hdmi";
+	pdevinfo_hdmi_v.res = res;
+	pdevinfo_hdmi_v.num_res = 1;
+	pdevinfo_hdmi_v.data = &hdmi_vdata;
+	pdevinfo_hdmi_v.size_data = sizeof(hdmi_vdata);
+	pdevinfo_hdmi_v.dma_mask = DMA_BIT_MASK(32);
+	platform_device_register_full(&pdevinfo_hdmi_v);
+
 	return ret;
 
 eirq:
@@ -511,10 +550,16 @@ static int __exit mxc_hdmi_core_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxc_hdmi_core_dt_ids[] = {
+	{ .compatible = "fsl,imx6q-hdmi-core", },
+	{ /* sentinel */ }
+};
+
 static struct platform_driver mxc_hdmi_core_driver = {
 	.driver = {
 		.name = "mxc_hdmi_core",
 		.owner = THIS_MODULE,
+		.of_match_table = mxc_hdmi_core_dt_ids,
 	},
 	.remove = __exit_p(mxc_hdmi_core_remove),
 };

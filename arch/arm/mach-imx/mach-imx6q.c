@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/fsl_devices.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/arch.h>
@@ -41,9 +42,15 @@ static struct imx_ipuv3_platform_data ipuv3_pdata = {
 	.pg = mx6q_ipuv3_pg,
 };
 
+static struct fsl_mxc_hdmi_core_platform_data hdmi_core_data = {
+	.ipu_id = 0,
+	.disp_id = 0,
+};
+
 static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,imx6q-hdmi-core", MX6Q_HDMI_BASE_ADDR, "mxc_hdmi_core.0", &hdmi_core_data),
 };
 
 static void __init imx6q_init_machine(void)
