@@ -22,10 +22,33 @@
 #include <asm/mach/time.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
+#include <mach/ipu-v3.h>
+
+static int mx6q_ipuv3_init(int id)
+{
+	imx_reset_ipu(id);
+	return 0;
+}
+
+static void mx6q_ipuv3_pg(int enable)
+{
+	/*TODO*/
+}
+
+static struct imx_ipuv3_platform_data ipuv3_pdata = {
+	.rev = 4,
+	.init = mx6q_ipuv3_init,
+	.pg = mx6q_ipuv3_pg,
+};
+
+static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
+	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
+};
 
 static void __init imx6q_init_machine(void)
 {
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+	of_platform_populate(NULL, of_default_bus_match_table, imx6q_auxdata_lookup, NULL);
 
 	imx6q_pm_init();
 }
