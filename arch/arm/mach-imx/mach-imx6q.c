@@ -19,6 +19,7 @@
 #include <linux/of_platform.h>
 #include <linux/phy.h>
 #include <linux/micrel_phy.h>
+#include <linux/dma-mapping.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
@@ -121,6 +122,8 @@ static void __init imx6q_map_io(void)
 	imx_scu_map_io();
 	imx6q_clock_map_io();
 	imx6q_iomux_map_io();
+
+	init_consistent_dma_size(SZ_64M);
 }
 
 static int __init imx6q_gpio_add_irq_domain(struct device_node *np,
