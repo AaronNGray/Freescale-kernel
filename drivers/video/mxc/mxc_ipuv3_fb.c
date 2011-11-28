@@ -2031,12 +2031,18 @@ static int mxcfb_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxcfb_ipuv3_dt_ids[] = {
+	{ .compatible = "fsl,mxcfb_ipuv3", },
+	{ /* sentinel */ }
+};
+
 /*!
  * This structure contains pointers to the power management callback functions.
  */
 static struct platform_driver mxcfb_driver = {
 	.driver = {
 		   .name = MXCFB_NAME,
+		   .of_match_table = mxcfb_ipuv3_dt_ids,
 		   },
 	.probe = mxcfb_probe,
 	.remove = mxcfb_remove,

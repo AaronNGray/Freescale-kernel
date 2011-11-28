@@ -85,9 +85,20 @@ static struct fsl_mxc_hdmi_core_platform_data hdmi_core_data = {
 	.disp_id = 0,
 };
 
+static struct ipuv3_fb_platform_data sabr_fb_data[] = {
+	{ /*fb0*/
+	.disp_dev = "hdmi",
+	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
+	.mode_str = "1280x720M@60",
+	.default_bpp = 16,
+	.int_clk = false,
+	},
+};
+
 static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,mxcfb_ipuv3", 0, "mxc_sdc_fb.0", &sabr_fb_data[0]),
 	OF_DEV_AUXDATA("fsl,imx6q-hdmi-core", MX6Q_HDMI_BASE_ADDR, "mxc_hdmi_core.0", &hdmi_core_data),
 };
 

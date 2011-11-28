@@ -68,4 +68,16 @@
 			linux,default-trigger = "heartbeat";
 		};
 	};
+
+	fbs {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		fb@0 {
+			compatible = "fsl,mxcfb_ipuv3";
+			reg = <0x00000000 0x0>;	/* reserve fb mem */
+		};
+	};
 };
