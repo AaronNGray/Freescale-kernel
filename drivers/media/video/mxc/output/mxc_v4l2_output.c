@@ -200,7 +200,7 @@ static int mxc_allocate_buffers(dma_addr_t bufs_paddr[], void *bufs_vaddr[],
  *
  * @return bits per pixel of pixelformat
  */
-static u32 fmt_to_bpp(u32 pixelformat)
+unsigned int fmt_to_bpp(u32 pixelformat)
 {
 	u32 bpp;
 
