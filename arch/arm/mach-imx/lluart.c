@@ -11,6 +11,7 @@
  */
 
 #include <linux/init.h>
+#include <linux/kernel.h>
 #include <asm/page.h>
 #include <asm/sizes.h>
 #include <asm/mach/map.h>
@@ -36,6 +37,6 @@ static struct map_desc imx_lluart_desc[] = {
 
 void __init imx_lluart_map_io(void)
 {
-	if (imx_lluart_desc.virtual)
-		iotable_init(&imx_lluart_desc, ARRY_SIZE(imx_lluart_desc));
+	if (ARRAY_SIZE(imx_lluart_desc))
+		iotable_init(imx_lluart_desc, ARRAY_SIZE(imx_lluart_desc));
 }
