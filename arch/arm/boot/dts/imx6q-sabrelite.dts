@@ -72,6 +72,20 @@
 		};
 	};
 
+	backlight {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "simple-bus";
+
+		pwm_bl {
+			compatible = "pwm-bl";
+			pwm-parent = <&pwm4>;
+			max_brightness = <255>;
+			dft_brightness = <128>;
+			pwm_period_ns = <50000>;
+		};
+	};
+
 	displays {
 		#address-cells = <1>;
 		#size-cells = <1>;
