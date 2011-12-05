@@ -571,5 +571,19 @@
 				status = "disabled";
 			};
 		};
+
+		ipu@0x02400000 { /* IPU1 */
+			compatible = "fsl,ipuv3";
+			reg = <0x02400000 0x400000>;
+			interrupts = <0 5 0x04 0 6 0x04>;
+			revision = <4>;
+		};
+
+		ipu@0x02800000 { /* IPU2 */
+			compatible = "fsl,ipuv3";
+			reg = <0x02800000 0x400000>;
+			interrupts = <0 7 0x04 0 8 0x04>;
+			revision = <4>;
+		};
 	};
 };
