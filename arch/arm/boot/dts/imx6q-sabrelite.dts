@@ -118,5 +118,9 @@
 			internal_clk = "false";
 			reg = <0x00000001 0x0>;	/* reserve fb mem */
 		};
+
+		v4l2-out@0 {
+			compatible = "fsl,vout_ipuv3";
+		};
 	};
 };
