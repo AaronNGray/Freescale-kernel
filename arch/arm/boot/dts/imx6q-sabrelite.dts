@@ -22,6 +22,15 @@
 	};
 
 	soc {
+		aips-bus@02000000 { /* AIPS1 */
+			ldb@020e0000 {
+				disp-pwr-gpios = <&gpio1 0 0>; /* gpio2 0 */
+				mode = "sin0";
+				ext_ref = "true";
+				lvds0 = <1 0>;
+			};
+		};
+
 		aips-bus@02100000 { /* AIPS2 */
 			enet@02188000 {
 				phy-mode = "rgmii";
