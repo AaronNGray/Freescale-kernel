@@ -28,6 +28,19 @@ static void __iomem *src_base;
 #define cpu_logical_map(cpu)		0
 #endif
 
+void imx_reset_ipu(int ipu)
+{
+	u32 val;
+
+	/* hard reset the IPU */
+	val = readl_relaxed(src_base);
+	if (ipu == 0)
+		val |= 1 << 3;
+	else
+		val |= 1 << 12;
+	writel_relaxed(val, src_base);
+}
+
 void imx_enable_cpu(int cpu, bool enable)
 {
 	u32 mask, val;

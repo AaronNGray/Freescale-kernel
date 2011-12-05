@@ -29,6 +29,7 @@
 #include <mach/hardware.h>
 #include <mach/iram.h>
 #include <mach/iomux-mx6q.h>
+#include <mach/ipu-v3.h>
 
 static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	/* DISPLAY */
@@ -85,6 +86,28 @@ static int ksz9021rn_phy_fixup(struct phy_device *phydev)
 	return 0;
 }
 
+static int mx6q_ipuv3_init(int id)
+{
+	imx_reset_ipu(id);
+	return 0;
+}
+
+static void mx6q_ipuv3_pg(int enable)
+{
+	/*TODO*/
+}
+
+static struct imx_ipuv3_platform_data ipuv3_pdata = {
+	.rev = 4,
+	.init = mx6q_ipuv3_init,
+	.pg = mx6q_ipuv3_pg,
+};
+
+static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
+	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
+};
+
 static void __init imx6q_init_machine(void)
 {
 	if (of_machine_is_compatible("fsl,imx6q-sabrelite")) {
@@ -94,7 +117,8 @@ static void __init imx6q_init_machine(void)
 					ARRAY_SIZE(imx6q_sabrelite_pads));
 	}
 
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+	of_platform_populate(NULL, of_default_bus_match_table,
+					imx6q_auxdata_lookup, NULL);
 
 	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
 
