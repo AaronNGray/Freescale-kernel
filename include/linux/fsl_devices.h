@@ -316,6 +316,14 @@ struct fsl_mxc_lcd_platform_data {
 	int disp_id;
 };
 
+struct fsl_mxc_dvi_platform_data {
+	void (*init) (void);
+	int (*update) (void);
+	char *analog_regulator;
+	int ipu_id;
+	int disp_id;
+};
+
 struct fsl_mxc_ldb_platform_data {
 	char *lvds_bg_reg;
 	u32 ext_ref;
