@@ -393,6 +393,11 @@
 				reg = <0x020e0000 0x4000>;
 			};
 
+			ldb@020e0000 {
+				compatible = "fsl,imx6q-ldb";
+				reg = <0x020e0000 0x4>;
+			};
+
 			dcic@020e4000 { /* DCIC1 */
 				reg = <0x020e4000 0x4000>;
 				interrupts = <0 124 0x04>;
