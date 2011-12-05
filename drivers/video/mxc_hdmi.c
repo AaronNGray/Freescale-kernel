@@ -1580,7 +1580,8 @@ static int mxc_hdmi_setup(struct mxc_hdmi *hdmi)
 	hdmi_tx_hdcp_config(hdmi);
 	hdmi_phy_init(hdmi, TRUE);
 	hdmi_video_force_output(hdmi, FALSE);
-	hdmi_set_clk_regenerator();
+	/*FIXME: audio CTS/N should be set after ipu display timming finish */
+	/*hdmi_set_clk_regenerator();*/
 
 	return 0;
 }
@@ -1943,9 +1944,15 @@ static const struct i2c_device_id mxc_hdmi_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, mxc_hdmi_i2c_id);
 
+static const struct of_device_id mxc_hdmi_ddc_dt_ids[] = {
+	{ .compatible = "fsl,imx6q-hdmi-ddc", },
+	{ /* sentinel */ }
+};
+
 static struct i2c_driver mxc_hdmi_i2c_driver = {
 	.driver = {
 		   .name = "mxc_hdmi_i2c",
+		   .of_match_table = mxc_hdmi_ddc_dt_ids,
 		   },
 	.probe = mxc_hdmi_i2c_probe,
 	.remove = mxc_hdmi_i2c_remove,
