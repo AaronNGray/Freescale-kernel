@@ -38,7 +38,6 @@
 #include <linux/uaccess.h>
 #include <asm/atomic.h>
 #include <mach/hardware.h>
-#include <mach/ipu-v3.h>
 #include "mxc_dispdrv.h"
 
 #define TVE_ENABLE			(1UL)
@@ -1103,6 +1102,18 @@ static int tve_drv_init(struct mxc_dispdrv_entry *disp, bool vga)
 	} else {
 		tve->regs = &tve_regs_v2;
 		tve->reg_fields = &tve_reg_fields_v2;
+	}
+
+	/* adjust video mode for mx37 */
+	if (cpu_is_mx37()) {
+		video_modes_tve[0].left_margin = 121;
+		video_modes_tve[0].right_margin = 16;
+		video_modes_tve[0].upper_margin = 17;
+		video_modes_tve[0].lower_margin = 5;
+		video_modes_tve[1].left_margin = 131;
+		video_modes_tve[1].right_margin = 12;
+		video_modes_tve[1].upper_margin = 21;
+		video_modes_tve[1].lower_margin = 3;
 	}
 
 	if (vga && cpu_is_mx53()) {
