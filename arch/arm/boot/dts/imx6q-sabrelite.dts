@@ -61,4 +61,39 @@
 			di = <0>;
 		};
 	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		debug-led {
+			label = "Heartbeat";
+			gpios = <&gpio2 25 0>; /* GPIO3_25 */
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	displays {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		disp1: fb@0 {
+			compatible = "fsl,mxcfb-ipuv3";
+			disp_dev = "hdmi";
+			interface_pix_fmt = "RGB24";
+			mode_str = "1280x720M@60";
+			internal_clk = "false";
+			reg = <0x00000000 0x0>;	/* reserve fb mem */
+		};
+
+		disp2: fb@1 {
+			compatible = "fsl,mxcfb-ipuv3";
+			disp_dev = "ldb";
+			interface_pix_fmt = "RGB666";
+			mode_str = "LDB-XGA";
+			internal_clk = "false";
+			reg = <0x00000001 0x0>;	/* reserve fb mem */
+		};
+	};
 };

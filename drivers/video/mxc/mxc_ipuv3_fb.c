@@ -91,6 +91,8 @@ struct mxcfb_info {
 
 	void *ipu;
 	struct fb_info *ovfbi;
+
+	struct ipuv3_fb_platform_data of_data;
 };
 
 struct mxcfb_alloc_list {
@@ -109,6 +111,7 @@ enum {
 
 static bool g_dp_in_use[2];
 LIST_HEAD(fb_alloc_list);
+static int of_dev_id;
 
 static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 {
@@ -129,6 +132,38 @@ static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 		break;
 	}
 	return pixfmt;
+}
+
+static int if_fmt_parse(const char *fmt)
+{
+	int if_fmt;
+
+	if (!strncmp(fmt, "RGB24", 5))
+		if_fmt = IPU_PIX_FMT_RGB24;
+	else if (!strncmp(fmt, "BGR24", 5))
+		if_fmt = IPU_PIX_FMT_BGR24;
+	else if (!strncmp(fmt, "GBR24", 5))
+		if_fmt = IPU_PIX_FMT_GBR24;
+	else if (!strncmp(fmt, "RGB565", 6))
+		if_fmt = IPU_PIX_FMT_RGB565;
+	else if (!strncmp(fmt, "RGB666", 6))
+		if_fmt = IPU_PIX_FMT_RGB666;
+	else if (!strncmp(fmt, "YUV444", 6))
+		if_fmt = IPU_PIX_FMT_YUV444;
+	else if (!strncmp(fmt, "LVDS666", 7))
+		if_fmt = IPU_PIX_FMT_LVDS666;
+	else if (!strncmp(fmt, "YUYV16", 6))
+		if_fmt = IPU_PIX_FMT_YUYV;
+	else if (!strncmp(fmt, "UYVY16", 6))
+		if_fmt = IPU_PIX_FMT_UYVY;
+	else if (!strncmp(fmt, "YVYU16", 6))
+		if_fmt = IPU_PIX_FMT_YVYU;
+	else if (!strncmp(fmt, "VYUY16", 6))
+		if_fmt = IPU_PIX_FMT_VYUY;
+	else
+		if_fmt = IPU_PIX_FMT_RGB24;
+
+	return if_fmt;
 }
 
 static struct fb_info *found_registered_fb(ipu_channel_t ipu_ch, int ipu_id)
@@ -1233,7 +1268,8 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 
 	down(&mxc_fbi->flip_sem);
 
-	mxc_fbi->cur_ipu_buf = (++mxc_fbi->cur_ipu_buf) % 3;
+	mxc_fbi->cur_ipu_buf++;
+	mxc_fbi->cur_ipu_buf %= 3;
 	mxc_fbi->cur_ipu_alpha_buf = !mxc_fbi->cur_ipu_alpha_buf;
 
 	dev_dbg(info->device, "Updating SDC %s buf %d address=0x%08lX\n",
@@ -1280,8 +1316,10 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 					       IPU_INPUT_BUFFER, 1),
 			ipu_check_buffer_ready(mxc_fbi->ipu, mxc_fbi->ipu_ch,
 					       IPU_INPUT_BUFFER, 2));
-		mxc_fbi->cur_ipu_buf = (++mxc_fbi->cur_ipu_buf) % 3;
-		mxc_fbi->cur_ipu_buf = (++mxc_fbi->cur_ipu_buf) % 3;
+		mxc_fbi->cur_ipu_buf++;
+		mxc_fbi->cur_ipu_buf %= 3;
+		mxc_fbi->cur_ipu_buf++;
+		mxc_fbi->cur_ipu_buf %= 3;
 		mxc_fbi->cur_ipu_alpha_buf = !mxc_fbi->cur_ipu_alpha_buf;
 		ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
 		ipu_enable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
@@ -1672,49 +1710,8 @@ static int mxcfb_option_setup(struct platform_device *pdev)
 			continue;
 		}
 		if (!strncmp(opt, "if=", 3)) {
-			if (!strncmp(opt+3, "RGB24", 5)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_RGB24;
-				continue;
-			} else if (!strncmp(opt+6, "BGR24", 5)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_BGR24;
-				continue;
-			}
-			if (!strncmp(opt+3, "GBR24", 5)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_GBR24;
-				continue;
-			}
-			if (!strncmp(opt+3, "RGB565", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_RGB565;
-				continue;
-			}
-			if (!strncmp(opt+3, "RGB666", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_RGB666;
-				continue;
-			}
-			if (!strncmp(opt+3, "YUV444", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_YUV444;
-				continue;
-			}
-			if (!strncmp(opt+3, "LVDS666", 7)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_LVDS666;
-				continue;
-			}
-			if (!strncmp(opt+3, "YUYV16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_YUYV;
-				continue;
-			}
-			if (!strncmp(opt+3, "UYVY16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_UYVY;
-				continue;
-			}
-			if (!strncmp(opt+3, "YVYU16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_YVYU;
-				continue;
-			}
-			if (!strncmp(opt+3, "VYUY16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_VYUY;
-				continue;
-			}
+			pdata->interface_pix_fmt = if_fmt_parse(opt+3);
+			continue;
 		}
 		if (!strncmp(opt, "int_clk", 7)) {
 			pdata->int_clk = true;
@@ -1727,8 +1724,10 @@ static int mxcfb_option_setup(struct platform_device *pdev)
 			fb_mode_str = opt;
 	}
 
-	if (fb_mode_str)
-		pdata->mode_str = fb_mode_str;
+	if (fb_mode_str) {
+		memcpy(pdata->mode_str, fb_mode_str, strlen(fb_mode_str));
+		pdata->mode_str[strlen(fb_mode_str)] = '\0';
+	}
 
 	return 0;
 }
@@ -1896,6 +1895,54 @@ static void ipu_clear_usage(int ipu, int di)
 	ipu_usage[ipu][di] = false;
 }
 
+static int of_get_fb_data(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct ipuv3_fb_platform_data *plat_data = pdev->dev.platform_data;
+	const char *disp_dev, *if_fmt, *mode_str, *int_clk;
+	const char *default_dev = "lcd";
+	const char *default_mode_str = "800x480M@55";
+	int ret;
+
+	if (!np)
+		return -EINVAL;
+
+	pdev->id = of_dev_id;
+	of_dev_id++;
+
+	plat_data->default_bpp = 16;
+
+	ret = of_property_read_string(np, "disp_dev", &disp_dev);
+	if (ret < 0)
+		memcpy(plat_data->disp_dev, default_dev, strlen(default_dev));
+	else
+		memcpy(plat_data->disp_dev, disp_dev, strlen(disp_dev));
+
+	ret = of_property_read_string(np, "interface_pix_fmt", &if_fmt);
+	if (ret < 0)
+		plat_data->interface_pix_fmt = IPU_PIX_FMT_RGB24;
+	else
+		plat_data->interface_pix_fmt = if_fmt_parse(if_fmt);
+
+	ret = of_property_read_string(np, "mode_str", &mode_str);
+	if (ret < 0)
+		memcpy(plat_data->mode_str, default_mode_str, strlen(default_mode_str));
+	else
+		memcpy(plat_data->mode_str, mode_str, strlen(mode_str));
+
+	ret = of_property_read_string(np, "internal_clk", &int_clk);
+	if (ret < 0)
+		plat_data->int_clk = false;
+	else {
+		if (!strcmp(int_clk, "true"))
+			plat_data->int_clk = true;
+		else
+			plat_data->int_clk = false;
+	}
+
+	return 0;
+}
+
 /*!
  * Probe routine for the framebuffer driver. It is called during the
  * driver binding process.      The following functions are performed in
@@ -1921,9 +1968,18 @@ static int mxcfb_probe(struct platform_device *pdev)
 		goto init_fbinfo_failed;
 	}
 
+	mxcfbi = (struct mxcfb_info *)fbi->par;
+
+	if (!plat_data) {
+		plat_data = pdev->dev.platform_data = &mxcfbi->of_data;
+		if (of_get_fb_data(pdev) < 0) {
+			dev_err(&pdev->dev, "no platform data\n");
+			goto platform_data_err;
+		}
+	}
+
 	mxcfb_option_setup(pdev);
 
-	mxcfbi = (struct mxcfb_info *)fbi->par;
 	mxcfbi->ipu_int_clk = plat_data->int_clk;
 	ret = mxcfb_dispdrv_init(pdev, fbi);
 	if (ret < 0)
@@ -2000,6 +2056,7 @@ get_ipu_failed:
 	ipu_clear_usage(mxcfbi->ipu_id, mxcfbi->ipu_di);
 ipu_in_busy:
 init_dispdrv_failed:
+platform_data_err:
 	fb_dealloc_cmap(&fbi->cmap);
 	framebuffer_release(fbi);
 init_fbinfo_failed:
@@ -2031,12 +2088,18 @@ static int mxcfb_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxcfb_ipuv3_dt_ids[] = {
+	{ .compatible = "fsl,mxcfb-ipuv3", },
+	{ /* sentinel */ }
+};
+
 /*!
  * This structure contains pointers to the power management callback functions.
  */
 static struct platform_driver mxcfb_driver = {
 	.driver = {
 		   .name = MXCFB_NAME,
+		   .of_match_table = mxcfb_ipuv3_dt_ids,
 		   },
 	.probe = mxcfb_probe,
 	.remove = mxcfb_remove,
