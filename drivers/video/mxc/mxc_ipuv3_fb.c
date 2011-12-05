@@ -1787,8 +1787,6 @@ static int mxcfb_register(struct fb_info *fbi)
 	ret = fb_set_var(fbi, &fbi->var);
 	fbi->flags &= ~FBINFO_MISC_USEREVENT;
 	console_unlock();
-	if (ret < 0)
-		goto err2;
 
 	if (mxcfbi->next_blank == FB_BLANK_UNBLANK) {
 		console_lock();
