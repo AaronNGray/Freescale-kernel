@@ -165,6 +165,9 @@ struct pwm_device *pwm_request(int pwm_id, const char *label)
 		if (pwm->pwm_id == pwm_id) {
 			found = 1;
 			break;
+		} else if ((int)pwm->pdev->dev.of_node == pwm_id) {
+			found = 1;
+			break;
 		}
 	}
 
@@ -282,9 +285,15 @@ static int __devexit mxc_pwm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxc_pwm_dt_ids[] = {
+	{ .compatible = "fsl,imx6q-pwm", },
+	{ /* sentinel */ }
+};
+
 static struct platform_driver mxc_pwm_driver = {
 	.driver		= {
 		.name	= "mxc_pwm",
+		.of_match_table = mxc_pwm_dt_ids,
 	},
 	.probe		= mxc_pwm_probe,
 	.remove		= __devexit_p(mxc_pwm_remove),

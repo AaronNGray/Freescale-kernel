@@ -83,6 +83,33 @@ static const struct backlight_ops pwm_backlight_ops = {
 	.check_fb	= pwm_backlight_check_fb,
 };
 
+struct platform_pwm_backlight_data of_data;
+static int of_get_pwm_data(struct platform_device *pdev,
+		struct platform_pwm_backlight_data *data)
+{
+	const __be32 *parp;
+	struct device_node *pwm_np, *np = pdev->dev.of_node;
+
+	if (!np)
+		return -EINVAL;
+
+	parp = of_get_property(np, "pwm-parent", NULL);
+	if (parp == NULL)
+		return -EINVAL;
+	of_node_put(np);
+
+	pwm_np = of_find_node_by_phandle(be32_to_cpup(parp));
+	if (pwm_np)
+		of_node_put(pwm_np);
+	data->pwm_id = (int)pwm_np;
+
+	of_property_read_u32(np, "max_brightness", &data->max_brightness);
+	of_property_read_u32(np, "dft_brightness", &data->dft_brightness);
+	of_property_read_u32(np, "pwm_period_ns", &data->pwm_period_ns);
+
+	return 0;
+}
+
 static int pwm_backlight_probe(struct platform_device *pdev)
 {
 	struct backlight_properties props;
@@ -92,8 +119,11 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	int ret;
 
 	if (!data) {
-		dev_err(&pdev->dev, "failed to find platform data\n");
-		return -EINVAL;
+		data = pdev->dev.platform_data = &of_data;
+		if (of_get_pwm_data(pdev, data) < 0) {
+			dev_err(&pdev->dev, "failed to find platform data\n");
+			return -EINVAL;
+		}
 	}
 
 	if (data->init) {
@@ -196,10 +226,16 @@ static int pwm_backlight_resume(struct platform_device *pdev)
 #define pwm_backlight_resume	NULL
 #endif
 
+static const struct of_device_id pwm_bl_dt_ids[] = {
+	{ .compatible = "pwm-bl", },
+	{ /* sentinel */ }
+};
+
 static struct platform_driver pwm_backlight_driver = {
 	.driver		= {
 		.name	= "pwm-backlight",
 		.owner	= THIS_MODULE,
+		.of_match_table = pwm_bl_dt_ids,
 	},
 	.probe		= pwm_backlight_probe,
 	.remove		= pwm_backlight_remove,
