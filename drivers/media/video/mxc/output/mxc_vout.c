@@ -1630,9 +1630,15 @@ static int mxc_vout_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxc_vout_dt_ids[] = {
+	{ .compatible = "fsl,vout_ipuv3", },
+	{ /* sentinel */ }
+};
+
 static struct platform_driver mxc_vout_driver = {
 	.driver = {
 		.name = "mxc_v4l2_output",
+		.of_match_table = mxc_vout_dt_ids,
 	},
 	.probe = mxc_vout_probe,
 	.remove = mxc_vout_remove,
