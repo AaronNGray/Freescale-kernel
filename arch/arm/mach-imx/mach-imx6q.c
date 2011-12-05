@@ -16,7 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
-#include <asm/dma-mapping.h>
+#include <linux/dma-mapping.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/arch.h>
@@ -25,6 +25,7 @@
 #include <mach/hardware.h>
 #include <mach/ipu-v3.h>
 #include <mach/iomux-mx6q.h>
+
 static iomux_v3_cfg_t mx6q_sabr_pads[] = {
 	/* DISPLAY */
 	MX6Q_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK,
@@ -124,7 +125,7 @@ static void __init imx6q_map_io(void)
 	imx_scu_map_io();
 	imx6q_clock_map_io();
 
-	init_consistent_dma_size(SZ_64MB);
+	init_consistent_dma_size(SZ_64M);
 }
 
 static void __init imx6q_gpio_add_irq_domain(struct device_node *np,
