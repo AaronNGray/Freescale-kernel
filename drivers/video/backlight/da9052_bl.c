@@ -9,6 +9,7 @@
  * da9052_bl.c: Backlight driver for DA9052
  */
 
+#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/fb.h>
 #include <linux/backlight.h>

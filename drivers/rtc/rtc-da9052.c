@@ -9,6 +9,7 @@
  * rtc-da9052.c: RTC driver for DA9052
  */
 
+#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/mfd/da9052/da9052.h>
