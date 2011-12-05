@@ -889,13 +889,15 @@ static int imx_uart_dma_init(struct imx_port *sport)
         struct dma_slave_config slave_config;
         dma_cap_mask_t mask;
         int ret;
+	struct imxuart_platform_data *pdata;
+	pdata = sport->port.dev->platform_data;
  
-        /* prepare for RX : */
+	/* prepare for RX : */
         dma_cap_zero(mask);
         dma_cap_set(DMA_SLAVE, mask);
  
         sport->dma_data.priority = DMA_PRIO_HIGH;
-        sport->dma_data.dma_request = MX6Q_DMA_REQ_UART2_RX;
+        sport->dma_data.dma_request = pdata->dma_req_rx;
         sport->dma_data.peripheral_type = IMX_DMATYPE_UART;
  
         sport->dma_chan_rx = dma_request_channel(mask, imx_uart_filter, sport);
@@ -924,7 +926,7 @@ static int imx_uart_dma_init(struct imx_port *sport)
         sport->rx_bytes = 0;
  
         /* prepare for TX : */
-        sport->dma_data.dma_request = MX6Q_DMA_REQ_UART2_TX;
+        sport->dma_data.dma_request = pdata->dma_req_tx;
         sport->dma_chan_tx = dma_request_channel(mask, imx_uart_filter, sport);
         if (!sport->dma_chan_tx) {
                 pr_err("cannot get the TX DMA channel!\n");
