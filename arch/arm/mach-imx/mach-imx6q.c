@@ -30,6 +30,7 @@
 #include <mach/iram.h>
 #include <mach/iomux-mx6q.h>
 #include <mach/ipu-v3.h>
+#include <mach/mxc_vpu.h>
 
 static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	/* DISPLAY */
@@ -103,9 +104,21 @@ static struct imx_ipuv3_platform_data ipuv3_pdata = {
 	.pg = mx6q_ipuv3_pg,
 };
 
+static void mx6q_vpu_reset(void)
+{
+	imx_reset_vpu();
+}
+
+static struct mxc_vpu_platform_data vpu_pdata = {
+	.iram_enable = true,
+	.iram_size = 0x21000,
+	.reset = mx6q_vpu_reset,
+};
+
 static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
 };
 
 static void __init imx6q_init_machine(void)
@@ -148,6 +161,9 @@ static void __init imx6q_map_io(void)
 	imx6q_iomux_map_io();
 
 	init_consistent_dma_size(SZ_64M);
+
+	if (!system_rev)
+		system_rev = 0x63000;
 }
 
 static int __init imx6q_gpio_add_irq_domain(struct device_node *np,
