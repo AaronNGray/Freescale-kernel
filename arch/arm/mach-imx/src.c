@@ -28,6 +28,22 @@ static void __iomem *src_base;
 #define cpu_logical_map(cpu)		0
 #endif
 
+void imx_reset_vpu(void)
+{
+	u32 val;
+
+	/* mask interrupt due to vpu passed reset */
+	val = readl_relaxed(src_base + 0x18);
+	val |= 0x02;
+	writel_relaxed(val, src_base + 0x18);
+
+	val = readl_relaxed(src_base);
+	val |= 0x5;    /* warm reset vpu */
+	writel_relaxed(val, src_base);
+	while (readl_relaxed(src_base) & 0x04)
+		;
+}
+
 void imx_reset_ipu(int ipu)
 {
 	u32 val;

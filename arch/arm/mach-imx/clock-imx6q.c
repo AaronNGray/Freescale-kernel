@@ -1938,6 +1938,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "hdmi_iahb_clk", hdmi_iahb_clk),
 	_REGISTER_CLOCK(NULL, "ldb_di0_clk", ldb_di0_clk),
 	_REGISTER_CLOCK(NULL, "ldb_di1_clk", ldb_di1_clk),
+	_REGISTER_CLOCK(NULL, "vpu_clk", vpu_clk),
 };
 
 int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)
