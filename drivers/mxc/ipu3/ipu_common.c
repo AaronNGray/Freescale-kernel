@@ -662,8 +662,10 @@ int32_t ipu_init_channel(struct ipu_soc *ipu, ipu_channel_t channel, ipu_channel
 		if (params->csi_mem.mipi_en) {
 			ipu_conf |= (1 << (IPU_CONF_CSI0_DATA_SOURCE_OFFSET +
 				params->csi_mem.csi));
-			_ipu_smfc_init(ipu, channel, params->csi_mem.mipi_id,
+			_ipu_smfc_init(ipu, channel, params->csi_mem.mipi_vc,
 				params->csi_mem.csi);
+			_ipu_csi_set_mipi_di(ipu, params->csi_mem.mipi_vc,
+				params->csi_mem.mipi_id, params->csi_mem.csi);
 		} else {
 			ipu_conf &= ~(1 << (IPU_CONF_CSI0_DATA_SOURCE_OFFSET +
 				params->csi_mem.csi));
@@ -2316,6 +2318,7 @@ int32_t ipu_enable_csi(struct ipu_soc *ipu, uint32_t csi)
 		return -EINVAL;
 	}
 
+	_ipu_get(ipu);
 	_ipu_lock(ipu);
 	ipu->csi_use_count[csi]++;
 
@@ -2327,6 +2330,7 @@ int32_t ipu_enable_csi(struct ipu_soc *ipu, uint32_t csi)
 			ipu_cm_write(ipu, reg | IPU_CONF_CSI1_EN, IPU_CONF);
 	}
 	_ipu_unlock(ipu);
+	_ipu_put(ipu);
 	return 0;
 }
 EXPORT_SYMBOL(ipu_enable_csi);
@@ -2348,7 +2352,7 @@ int32_t ipu_disable_csi(struct ipu_soc *ipu, uint32_t csi)
 		dev_err(ipu->dev, "Wrong csi num_%d\n", csi);
 		return -EINVAL;
 	}
-
+	_ipu_get(ipu);
 	_ipu_lock(ipu);
 	ipu->csi_use_count[csi]--;
 	if (ipu->csi_use_count[csi] == 0) {
@@ -2359,6 +2363,7 @@ int32_t ipu_disable_csi(struct ipu_soc *ipu, uint32_t csi)
 			ipu_cm_write(ipu, reg & ~IPU_CONF_CSI1_EN, IPU_CONF);
 	}
 	_ipu_unlock(ipu);
+	_ipu_put(ipu);
 	return 0;
 }
 EXPORT_SYMBOL(ipu_disable_csi);
