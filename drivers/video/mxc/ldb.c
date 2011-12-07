@@ -38,6 +38,7 @@
 #include <linux/spinlock.h>
 #include <linux/fsl_devices.h>
 #include <linux/of_gpio.h>
+#include <linux/of_device.h>
 #include <mach/hardware.h>
 #include <mach/clock.h>
 #include "mxc_dispdrv.h"
@@ -98,6 +99,30 @@ struct ldb_data {
 		int di;
 	} setting[2];
 	struct notifier_block nb;
+	uint8_t hwtype;
+};
+
+enum mxc_ldb_hwtype {
+	IMX5_LDB,
+	IMX6_LDB,
+};
+
+static struct platform_device_id mxc_ldb_devtype[] = {
+	{
+		.name = "imx5-ldb",
+		.driver_data = IMX5_LDB,
+	}, {
+		.name = "imx6-ldb",
+		.driver_data = IMX6_LDB,
+	}, {
+		/* sentinel */
+	}
+};
+
+static const struct of_device_id mxc_ldb_dt_ids[] = {
+	{ .compatible = "fsl,imx5-ldb", .data = &mxc_ldb_devtype[IMX5_LDB], },
+	{ .compatible = "fsl,imx6q-ldb", .data = &mxc_ldb_devtype[IMX6_LDB], },
+	{ /* sentinel */ }
 };
 
 static int g_ldb_mode;
@@ -408,9 +433,12 @@ static int ldb_ipu_ldb_route(int ipu, int di, struct ldb_data *ldb)
 	return 0;
 }
 
-static int of_get_ldb_data(struct platform_device *pdev,
+static int of_get_ldb_data(struct ldb_data *ldb,
 	struct fsl_mxc_ldb_platform_data *plat_data)
 {
+	struct platform_device *pdev = ldb->pdev;
+	const struct of_device_id *of_id =
+			of_match_device(mxc_ldb_dt_ids, &pdev->dev);
 	struct device_node *np = pdev->dev.of_node;
 	uint32_t lvds0[2] = {0}, lvds1[2] = {0};
 	const char *mode, *ext_ref;
@@ -418,6 +446,10 @@ static int of_get_ldb_data(struct platform_device *pdev,
 
 	if (!np)
 		return -EINVAL;
+
+	if (of_id)
+		pdev->id_entry = of_id->data;
+	ldb->hwtype = pdev->id_entry->driver_data;
 
 	ret = of_property_read_string(np, "mode", &mode);
 	if (ret < 0)
@@ -499,7 +531,7 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 
 	if (!plat_data) {
 		plat_data = &of_data;
-		if (of_get_ldb_data(ldb->pdev, plat_data) < 0) {
+		if (of_get_ldb_data(ldb, plat_data) < 0) {
 			dev_err(&ldb->pdev->dev, "no platform data\n");
 			return -EINVAL;
 		}
@@ -621,7 +653,7 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		writel(reg, ldb->control_reg);
 
 		/* clock setting */
-		if (cpu_is_mx6q() &&
+		if ((ldb->hwtype == IMX6_LDB) &&
 			((ldb->mode == LDB_SEP0) || (ldb->mode == LDB_SEP1)))
 			ldb_clk[6] += lvds_channel;
 		else
@@ -669,7 +701,7 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 			return -EINVAL;
 		}
 
-		if (cpu_is_mx6q()) {
+		if (ldb->hwtype == IMX6_LDB) {
 			setting->dev_id = plat_data->sec_ipu_id;
 			setting->disp_id = plat_data->sec_disp_id;
 		} else {
@@ -707,7 +739,7 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		writel(reg, ldb->control_reg);
 
 		/* clock setting */
-		if (cpu_is_mx6q())
+		if (ldb->hwtype == IMX6_LDB)
 			ldb_clk[6] += lvds_channel;
 		else
 			ldb_clk[6] += setting->disp_id;
@@ -729,7 +761,7 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		setting_idx = 1;
 	}
 
-	if (cpu_is_mx6q()) {
+	if (ldb->hwtype == IMX6_LDB) {
 		reg = readl(ldb->control_reg);
 		reg &= ~(LDB_CH0_MODE_MASK | LDB_CH1_MODE_MASK);
 		reg |= LDB_CH0_MODE_EN_TO_DI0 | LDB_CH1_MODE_EN_TO_DI1;
@@ -850,11 +882,6 @@ static int ldb_remove(struct platform_device *pdev)
 	kfree(ldb);
 	return 0;
 }
-
-static const struct of_device_id mxc_ldb_dt_ids[] = {
-	{ .compatible = "fsl,imx6q-ldb", },
-	{ /* sentinel */ }
-};
 
 static struct platform_driver mxcldb_driver = {
 	.driver = {
