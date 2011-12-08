@@ -811,6 +811,7 @@ config MFD_INTEL_MSIC
 
 config MFD_MXC_HDMI
 	tristate "MXC HDMI Core"
+	depends on MXC_IPU
 	select MFD_CORE
 	default y
 	help
