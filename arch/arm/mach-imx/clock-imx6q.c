@@ -421,14 +421,17 @@ static unsigned long get_low_reference_clock_rate(struct clk *clk)
 }
 
 static struct clk ckil_clk = {
+	__INIT_CLK_DEBUG(ckil_clk)
 	.get_rate = get_low_reference_clock_rate,
 };
 
 static struct clk ckih_clk = {
+	__INIT_CLK_DEBUG(ckih_clk)
 	.get_rate = get_high_reference_clock_rate,
 };
 
 static struct clk osc_clk = {
+	__INIT_CLK_DEBUG(osc_clk)
 	.get_rate = get_oscillator_reference_clock_rate,
 };
 
@@ -1939,6 +1942,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "ldb_di0_clk", ldb_di0_clk),
 	_REGISTER_CLOCK(NULL, "ldb_di1_clk", ldb_di1_clk),
 	_REGISTER_CLOCK(NULL, "vpu_clk", vpu_clk),
+	_REGISTER_CLOCK(NULL, "gpt_clk", gpt_clk),
 };
 
 int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)
@@ -2034,6 +2038,9 @@ int __init mx6q_clocks_init(void)
 	clk_set_parent(&asrc_serial_clk, &pll3_usb_otg);
 	clk_set_rate(&asrc_serial_clk, 1500000);
 	clk_set_rate(&enfc_clk, 11000000);
+
+	/* Lower the ipg_perclk frequency to 8.25MHz. */
+	clk_set_rate(&ipg_perclk, 8250000);
 
 	/*
 	 * Before pinctrl API is available, we have to rely on the pad
