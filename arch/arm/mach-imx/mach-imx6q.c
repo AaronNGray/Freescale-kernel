@@ -24,6 +24,7 @@
 #include <asm/mach/time.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
+#include <mach/iram.h>
 
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -47,6 +48,8 @@ static void __init imx6q_init_machine(void)
 					   ksz9021rn_phy_fixup);
 
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+
+	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
 
 	imx6q_pm_init();
 }
