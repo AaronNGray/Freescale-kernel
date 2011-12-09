@@ -107,6 +107,8 @@ static void __init imx6q_init_machine(void)
 	mxc_iomux_v3_setup_multiple_pads(mx6q_sabr_pads,
 				ARRAY_SIZE(mx6q_sabr_pads));
 
+	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
+
 	of_platform_populate(NULL, of_default_bus_match_table, imx6q_auxdata_lookup, NULL);
 
 	imx6q_pm_init();
@@ -138,8 +140,6 @@ static void __init imx6q_map_io(void)
 	imx_lluart_map_io();
 	imx_scu_map_io();
 	imx6q_clock_map_io();
-
-	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
 
 	init_consistent_dma_size(SZ_64M);
 
