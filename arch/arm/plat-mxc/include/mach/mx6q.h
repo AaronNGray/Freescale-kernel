@@ -13,6 +13,8 @@
 #ifndef __MACH_MX6Q_H__
 #define __MACH_MX6Q_H__
 
+#include <asm/sizes.h>
+
 #define MX6Q_IO_P2V(x)			IMX_IO_P2V(x)
 #define MX6Q_IO_ADDRESS(x)		IOMEM(MX6Q_IO_P2V(x))
 
@@ -29,5 +31,9 @@
 #define MX6Q_ANATOP_SIZE		0x1000
 #define MX6Q_UART4_BASE_ADDR		0x021f0000
 #define MX6Q_UART4_SIZE			0x4000
+
+/* The last 4K is for cpu hotplug to workaround wdog issue */
+#define MX6Q_IRAM_BASE_ADDR		0x00900000
+#define MX6Q_IRAM_SIZE			(SZ_256K - SZ_4K)
 
 #endif	/* __MACH_MX6Q_H__ */
