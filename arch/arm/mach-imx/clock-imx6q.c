@@ -18,6 +18,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/suspend.h>
 #include <asm/div64.h>
 #include <asm/mach/map.h>
 #include <mach/clock.h>
@@ -1945,6 +1946,45 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "gpt_clk", gpt_clk),
 };
 
+static u32 ccr, clpcr, ccgr1, ccgr6;
+#define BP_CCR_RBC_EN	27
+void imx6q_ccm_pre_suspend(suspend_state_t state)
+{
+	ccr = readl_relaxed(CCR);
+	if (state == PM_SUSPEND_MEM) {
+		writel_relaxed(ccr | (1 << BP_CCR_RBC_EN), CCR);
+	}
+	clpcr = readl_relaxed(CLPCR);
+
+	/* for GPU */
+	ccgr1 = readl_relaxed(CCGR1);
+	ccgr6 = readl_relaxed(CCGR6);
+}
+
+void imx6q_ccm_gpu_pre_suspend(void)
+{
+	/* disable clocks */
+	writel_relaxed(ccgr1 & 0xf0ffffff, CCGR1);
+	writel_relaxed(ccgr6 & 0x00003fff, CCGR6);
+}
+
+void imx6q_ccm_gpu_post_resume(void)
+{
+	/* enable clocks */
+	writel_relaxed(ccgr1 | 0x0f000000, CCGR1);
+	writel_relaxed(ccgr6 | 0x0000c000, CCGR6);
+}
+
+void imx6q_ccm_post_resume(void)
+{
+	writel_relaxed(ccr, CCR);
+	writel_relaxed(clpcr, CLPCR);
+
+	/* for GPU */
+	writel_relaxed(ccgr1, CCGR1);
+	writel_relaxed(ccgr6, CCGR6);
+}
+
 int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)
 {
 	u32 val = readl_relaxed(CLPCR);
@@ -1972,9 +2012,18 @@ int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)
 		val |= BM_CLPCR_SBYOS;
 		val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
 		break;
+	case ARM_POWER_OFF:
+		val |= 0x2 << BP_CLPCR_LPM;
+		val |= 0x3 << BP_CLPCR_STBY_COUNT;
+		val |= BM_CLPCR_VSTBY;
+		val |= BM_CLPCR_SBYOS;
+		val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
+		val |= BM_CLPCR_WB_PER_AT_LPM;
+		break;
 	default:
 		return -EINVAL;
 	}
+
 	writel_relaxed(val, CLPCR);
 
 	return 0;
@@ -2016,7 +2065,7 @@ int __init mx6q_clocks_init(void)
 	}
 
 	/* only keep necessary clocks on */
-	writel_relaxed(0x3 << CG0  | 0x3 << CG1  | 0x3 << CG2,	CCGR0);
+	writel_relaxed(0x3 << CG0  | 0x3 << CG1  | 0x3 << CG2,  CCGR0);
 	writel_relaxed(0x3 << CG8  | 0x3 << CG9  | 0x3 << CG10,	CCGR2);
 	writel_relaxed(0x3 << CG10 | 0x3 << CG12 | 0x1 << CG14,	CCGR3);
 	writel_relaxed(0x3 << CG4  | 0x3 << CG6  | 0x3 << CG7,	CCGR4);

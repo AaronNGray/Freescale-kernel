@@ -119,6 +119,7 @@ static void __init imx6q_init_machine(void)
 #include <asm/sizes.h>
 #include <asm/mach/map.h>
 #include <mach/hardware.h>
+void __iomem *iomux_base;
 static struct map_desc imx_mx6q_fix_desc[] = {
 	{
 		.virtual	= MX6Q_IO_P2V(MX6Q_IOMUXC_BASE_ADDR),
@@ -131,7 +132,8 @@ static struct map_desc imx_mx6q_fix_desc[] = {
 void __init mx6q_fix_map_io(void)
 {
 	iotable_init(imx_mx6q_fix_desc, ARRAY_SIZE(imx_mx6q_fix_desc));
-	mxc_iomux_v3_init(MX6Q_IO_P2V(MX6Q_IOMUXC_BASE_ADDR));
+	iomux_base = (void __iomem *)MX6Q_IO_P2V(MX6Q_IOMUXC_BASE_ADDR);
+	mxc_iomux_v3_init(iomux_base);
 }
 
 static void __init imx6q_map_io(void)

@@ -29,7 +29,7 @@
 #define BP_SRC_SIMR_IPU1_MASK		2
 #define BP_SRC_SIMR_IPU2_MASK		4
 
-static void __iomem *src_base;
+void __iomem *src_base;
 
 #ifndef CONFIG_SMP
 #define cpu_logical_map(cpu)		0

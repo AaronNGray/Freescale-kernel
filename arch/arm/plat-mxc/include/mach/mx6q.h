@@ -41,4 +41,6 @@
 #define MX6Q_IPU1_BASE_ADDR         	0x02400000
 #define MX6Q_IPU2_BASE_ADDR         	0x02800000
 
+#define MX6Q_SRC_BASE_ADDR		0x020d8000
+
 #endif	/* __MACH_MX6Q_H__ */
