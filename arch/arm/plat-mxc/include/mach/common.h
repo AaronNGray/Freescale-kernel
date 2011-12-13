@@ -11,6 +11,8 @@
 #ifndef __ASM_ARCH_MXC_COMMON_H__
 #define __ASM_ARCH_MXC_COMMON_H__
 
+#include <linux/suspend.h>
+
 struct platform_device;
 struct clk;
 enum mxc_cpu_pwr_mode;
@@ -82,6 +84,7 @@ enum mxc_cpu_pwr_mode {
 	WAIT_UNCLOCKED_POWER_OFF,	/* WAIT + SRPG */
 	STOP_POWER_ON,		/* just STOP */
 	STOP_POWER_OFF,		/* STOP + SRPG */
+	ARM_POWER_OFF,          /* STOP + SRPG + ARM power off */
 };
 
 extern void mx5_cpu_lp_set(enum mxc_cpu_pwr_mode mode);
@@ -123,8 +126,9 @@ extern void imx_enable_cpu(int cpu, bool enable);
 extern void imx_set_cpu_jump(int cpu, void *jump_addr);
 extern void imx_src_init(void);
 extern void imx_gpc_init(void);
-extern void imx_gpc_pre_suspend(void);
-extern void imx_gpc_post_resume(void);
+extern bool imx_gpc_wake_irq_pending(void);
+extern void imx_gpc_pre_suspend(suspend_state_t state);
+extern void imx_gpc_post_resume(suspend_state_t state);
 extern void imx51_babbage_common_init(void);
 extern void imx53_ard_common_init(void);
 extern void imx53_evk_common_init(void);
@@ -139,4 +143,8 @@ extern void imx6q_pm_init(void);
 static inline void imx6q_pm_init(void) {}
 #endif
 
+extern void imx6q_ccm_pre_suspend(suspend_state_t state);
+extern void imx6q_ccm_gpu_pre_suspend(void);
+extern void imx6q_ccm_gpu_post_resume(void);
+extern void imx6q_ccm_post_resume(void);
 #endif

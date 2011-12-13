@@ -36,4 +36,6 @@
 #define MX6Q_IRAM_BASE_ADDR		0x00900000
 #define MX6Q_IRAM_SIZE			(SZ_256K - SZ_4K)
 
+#define MX6Q_SRC_BASE_ADDR		0x020d8000
+
 #endif	/* __MACH_MX6Q_H__ */
