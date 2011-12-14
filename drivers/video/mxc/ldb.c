@@ -37,6 +37,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
 #include <linux/fsl_devices.h>
+#include <linux/of_gpio.h>
+#include <linux/of_device.h>
 #include <mach/hardware.h>
 #include <mach/clock.h>
 #include "mxc_dispdrv.h"
@@ -97,6 +99,30 @@ struct ldb_data {
 		int di;
 	} setting[2];
 	struct notifier_block nb;
+	uint8_t hwtype;
+};
+
+enum mxc_ldb_hwtype {
+	IMX5_LDB,
+	IMX6_LDB,
+};
+
+static struct platform_device_id mxc_ldb_devtype[] = {
+	{
+		.name = "imx5-ldb",
+		.driver_data = IMX5_LDB,
+	}, {
+		.name = "imx6-ldb",
+		.driver_data = IMX6_LDB,
+	}, {
+		/* sentinel */
+	}
+};
+
+static const struct of_device_id mxc_ldb_dt_ids[] = {
+	{ .compatible = "fsl,imx5-ldb", .data = &mxc_ldb_devtype[IMX5_LDB], },
+	{ .compatible = "fsl,imx6q-ldb", .data = &mxc_ldb_devtype[IMX6_LDB], },
+	{ /* sentinel */ }
 };
 
 static int g_ldb_mode;
@@ -297,11 +323,200 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 	return 0;
 }
 
+#define LVDS0_MUX_CTL_MASK	(3 << 6)
+#define LVDS1_MUX_CTL_MASK	(3 << 8)
+#define LVDS0_MUX_CTL_OFFS	6
+#define LVDS1_MUX_CTL_OFFS	8
+#define ROUTE_IPU0_DI0		0
+#define ROUTE_IPU0_DI1		1
+#define ROUTE_IPU1_DI0		2
+#define ROUTE_IPU1_DI1		3
+static int ldb_ipu_ldb_route(int ipu, int di, struct ldb_data *ldb)
+{
+	uint32_t reg;
+	int mode = ldb->mode;
+
+	reg = readl(ldb->gpr3_reg);
+	if ((mode == LDB_SPL_DI0) || (mode == LDB_DUL_DI0)) {
+		reg &= ~(LVDS0_MUX_CTL_MASK | LVDS1_MUX_CTL_MASK);
+		if (ipu == 0)
+			reg |= (ROUTE_IPU0_DI0 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU0_DI0 << LVDS1_MUX_CTL_OFFS);
+		else
+			reg |= (ROUTE_IPU1_DI0 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU1_DI0 << LVDS1_MUX_CTL_OFFS);
+		dev_dbg(&ldb->pdev->dev,
+			"Dual/Split mode both channels route to IPU%d-DI0\n", ipu);
+	} else if ((mode == LDB_SPL_DI1) || (mode == LDB_DUL_DI1)) {
+		reg &= ~(LVDS0_MUX_CTL_MASK | LVDS1_MUX_CTL_MASK);
+		if (ipu == 0)
+			reg |= (ROUTE_IPU0_DI1 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU0_DI1 << LVDS1_MUX_CTL_OFFS);
+		else
+			reg |= (ROUTE_IPU1_DI1 << LVDS0_MUX_CTL_OFFS) |
+				(ROUTE_IPU1_DI1 << LVDS1_MUX_CTL_OFFS);
+		dev_dbg(&ldb->pdev->dev,
+			"Dual/Split mode both channels route to IPU%d-DI1\n", ipu);
+	} else if (mode == LDB_SIN0) {
+		reg &= ~LVDS0_MUX_CTL_MASK;
+		if ((ipu == 0) && (di == 0))
+			reg |= ROUTE_IPU0_DI0 << LVDS0_MUX_CTL_OFFS;
+		else if ((ipu == 0) && (di == 1))
+			reg |= ROUTE_IPU0_DI1 << LVDS0_MUX_CTL_OFFS;
+		else if ((ipu == 1) && (di == 0))
+			reg |= ROUTE_IPU1_DI0 << LVDS0_MUX_CTL_OFFS;
+		else
+			reg |= ROUTE_IPU1_DI1 << LVDS0_MUX_CTL_OFFS;
+		dev_dbg(&ldb->pdev->dev,
+			"Single mode channel 0 route to IPU%d-DI%d\n", ipu, di);
+	} else if (mode == LDB_SIN1) {
+		reg &= ~LVDS1_MUX_CTL_MASK;
+		if ((ipu == 0) && (di == 0))
+			reg |= ROUTE_IPU0_DI0 << LVDS1_MUX_CTL_OFFS;
+		else if ((ipu == 0) && (di == 1))
+			reg |= ROUTE_IPU0_DI1 << LVDS1_MUX_CTL_OFFS;
+		else if ((ipu == 1) && (di == 0))
+			reg |= ROUTE_IPU1_DI0 << LVDS1_MUX_CTL_OFFS;
+		else
+			reg |= ROUTE_IPU1_DI1 << LVDS1_MUX_CTL_OFFS;
+		dev_dbg(&ldb->pdev->dev,
+			"Single mode channel 1 route to IPU%d-DI%d\n", ipu, di);
+	} else {
+		static bool first = true;
+		int channel;
+
+		if (first) {
+			if (mode == LDB_SEP0) {
+				reg &= ~LVDS0_MUX_CTL_MASK;
+				channel = 0;
+			} else {
+				reg &= ~LVDS1_MUX_CTL_MASK;
+				channel = 1;
+			}
+			first = false;
+		} else {
+			if (mode == LDB_SEP0) {
+				reg &= ~LVDS1_MUX_CTL_MASK;
+				channel = 1;
+			} else {
+				reg &= ~LVDS0_MUX_CTL_MASK;
+				channel = 0;
+			}
+		}
+
+		if ((ipu == 0) && (di == 0)) {
+			if (channel == 0)
+				reg |= ROUTE_IPU0_DI0 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU0_DI0 << LVDS1_MUX_CTL_OFFS;
+		} else if ((ipu == 0) && (di == 1)) {
+			if (channel == 0)
+				reg |= ROUTE_IPU0_DI1 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU0_DI1 << LVDS1_MUX_CTL_OFFS;
+		} else if ((ipu == 1) && (di == 0)) {
+			if (channel == 0)
+				reg |= ROUTE_IPU1_DI0 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU1_DI0 << LVDS1_MUX_CTL_OFFS;
+		} else {
+			if (channel == 0)
+				reg |= ROUTE_IPU1_DI1 << LVDS0_MUX_CTL_OFFS;
+			else
+				reg |= ROUTE_IPU1_DI1 << LVDS1_MUX_CTL_OFFS;
+		}
+
+		dev_dbg(&ldb->pdev->dev, "Separate mode channel %d route to IPU%d-DI%d\n", channel, ipu, di);
+	}
+	writel(reg, ldb->gpr3_reg);
+
+	return 0;
+}
+
+static int of_get_ldb_data(struct ldb_data *ldb,
+	struct fsl_mxc_ldb_platform_data *plat_data)
+{
+	struct platform_device *pdev = ldb->pdev;
+	const struct of_device_id *of_id =
+			of_match_device(mxc_ldb_dt_ids, &pdev->dev);
+	struct device_node *np = pdev->dev.of_node;
+	uint32_t lvds0[2] = {0}, lvds1[2] = {0};
+	const char *mode, *ext_ref;
+	int ret;
+
+	if (!np)
+		return -EINVAL;
+
+	if (of_id)
+		pdev->id_entry = of_id->data;
+	ldb->hwtype = pdev->id_entry->driver_data;
+
+	ret = of_property_read_string(np, "mode", &mode);
+	if (ret < 0)
+		g_ldb_mode = LDB_SEP0;
+	else {
+		if (!strcmp(mode, "spl0"))
+			g_ldb_mode = LDB_SPL_DI0;
+		else if (!strcmp(mode, "spl1"))
+			g_ldb_mode = LDB_SPL_DI1;
+		else if (!strcmp(mode, "dul0"))
+			g_ldb_mode = LDB_DUL_DI0;
+		else if (!strcmp(mode, "dul1"))
+			g_ldb_mode = LDB_DUL_DI1;
+		else if (!strcmp(mode, "sin0"))
+			g_ldb_mode = LDB_SIN0;
+		else if (!strcmp(mode, "sin1"))
+			g_ldb_mode = LDB_SIN1;
+		else if (!strcmp(mode, "sep0"))
+			g_ldb_mode = LDB_SEP0;
+		else if (!strcmp(mode, "sep1"))
+			g_ldb_mode = LDB_SEP1;
+	}
+
+	ret = of_property_read_string(np, "ext_ref", &ext_ref);
+	if (ret < 0)
+		plat_data->ext_ref = 1;
+	else if (!strcmp(ext_ref, "true"))
+		plat_data->ext_ref = 1;
+
+	of_property_read_u32_array(np, "lvds0",
+				   lvds0, ARRAY_SIZE(lvds0));
+	of_property_read_u32_array(np, "lvds1",
+				   lvds1, ARRAY_SIZE(lvds1));
+
+	if ((g_ldb_mode == LDB_SPL_DI0) || (g_ldb_mode == LDB_DUL_DI0)) {
+		plat_data->ipu_id = lvds0[0];
+		plat_data->disp_id = 0;
+	} else if ((g_ldb_mode == LDB_SPL_DI1) || (g_ldb_mode == LDB_DUL_DI1)) {
+		plat_data->ipu_id = lvds0[0];
+		plat_data->disp_id = 1;
+	} else if (g_ldb_mode == LDB_SIN0) {
+		plat_data->ipu_id = lvds0[0];
+		plat_data->disp_id = lvds0[1];
+	} else if (g_ldb_mode == LDB_SIN1) {
+		plat_data->ipu_id = lvds1[0];
+		plat_data->disp_id = lvds1[1];
+	} else if (g_ldb_mode == LDB_SEP0) {
+		plat_data->ipu_id = lvds0[0];
+		plat_data->disp_id = lvds0[1];
+		plat_data->sec_ipu_id = lvds1[0];
+		plat_data->sec_disp_id = lvds1[1];
+	} else if (g_ldb_mode == LDB_SEP1) {
+		plat_data->ipu_id = lvds1[0];
+		plat_data->disp_id = lvds1[1];
+		plat_data->sec_ipu_id = lvds0[0];
+		plat_data->sec_disp_id = lvds0[1];
+	}
+
+	return 0;
+}
+
 static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 {
 	int ret = 0, i;
 	struct ldb_data *ldb = mxc_dispdrv_getdata(disp);
 	struct mxc_dispdrv_setting *setting = mxc_dispdrv_getsetting(disp);
+	struct fsl_mxc_ldb_platform_data of_data;
 	struct fsl_mxc_ldb_platform_data *plat_data = ldb->pdev->dev.platform_data;
 	struct resource *res;
 	uint32_t base_addr;
@@ -312,6 +527,14 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		dev_warn(&ldb->pdev->dev, "Input pixel format not valid"
 					" use default RGB666\n");
 		setting->if_fmt = IPU_PIX_FMT_RGB666;
+	}
+
+	if (!plat_data) {
+		plat_data = &of_data;
+		if (of_get_ldb_data(ldb, plat_data) < 0) {
+			dev_err(&ldb->pdev->dev, "no platform data\n");
+			return -EINVAL;
+		}
 	}
 
 	if (!ldb->inited) {
@@ -430,7 +653,11 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		writel(reg, ldb->control_reg);
 
 		/* clock setting */
-		ldb_clk[6] += setting->disp_id;
+		if ((ldb->hwtype == IMX6_LDB) &&
+			((ldb->mode == LDB_SEP0) || (ldb->mode == LDB_SEP1)))
+			ldb_clk[6] += lvds_channel;
+		else
+			ldb_clk[6] += setting->disp_id;
 		ldb->ldb_di_clk[0] = clk_get(&ldb->pdev->dev, ldb_clk);
 		if (IS_ERR(ldb->ldb_di_clk[0])) {
 			dev_err(&ldb->pdev->dev, "get ldb clk0 failed\n");
@@ -474,8 +701,13 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 			return -EINVAL;
 		}
 
-		setting->dev_id = plat_data->ipu_id;
-		setting->disp_id = !plat_data->disp_id;
+		if (ldb->hwtype == IMX6_LDB) {
+			setting->dev_id = plat_data->sec_ipu_id;
+			setting->disp_id = plat_data->sec_disp_id;
+		} else {
+			setting->dev_id = plat_data->ipu_id;
+			setting->disp_id = !plat_data->disp_id;
+		}
 
 		/* second output is LVDS0 or LVDS1 */
 		if (ldb->mode == LDB_SEP0)
@@ -507,7 +739,10 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		writel(reg, ldb->control_reg);
 
 		/* clock setting */
-		ldb_clk[6] += setting->disp_id;
+		if (ldb->hwtype == IMX6_LDB)
+			ldb_clk[6] += lvds_channel;
+		else
+			ldb_clk[6] += setting->disp_id;
 		ldb->ldb_di_clk[1] = clk_get(&ldb->pdev->dev, ldb_clk);
 		if (IS_ERR(ldb->ldb_di_clk[1])) {
 			dev_err(&ldb->pdev->dev, "get ldb clk1 failed\n");
@@ -524,6 +759,14 @@ static int ldb_disp_init(struct mxc_dispdrv_entry *disp)
 		dev_dbg(&ldb->pdev->dev, "ldb_clk to di clk: %s -> %s\n", ldb_clk, di_clk);
 
 		setting_idx = 1;
+	}
+
+	if (ldb->hwtype == IMX6_LDB) {
+		reg = readl(ldb->control_reg);
+		reg &= ~(LDB_CH0_MODE_MASK | LDB_CH1_MODE_MASK);
+		reg |= LDB_CH0_MODE_EN_TO_DI0 | LDB_CH1_MODE_EN_TO_DI1;
+		writel(reg, ldb->control_reg);
+		ldb_ipu_ldb_route(setting->dev_id, setting->disp_id, ldb);
 	}
 
 	/*
@@ -581,6 +824,24 @@ static struct mxc_dispdrv_driver ldb_drv = {
 	.deinit	= ldb_disp_deinit,
 };
 
+static void ldb_disp_pwr_up(struct platform_device *pdev)
+{
+	int ret, gpio_pwr;
+	struct device_node *np = pdev->dev.of_node;
+
+	if (!np)
+		return;
+
+	gpio_pwr = of_get_named_gpio(np, "disp-pwr-gpios", 0);
+	if (gpio_pwr < 0)
+		dev_warn(&pdev->dev, "no pwr gpio defined\n");
+	else {
+		ret = gpio_request_one(gpio_pwr, GPIOF_OUT_INIT_HIGH, "disp-pwr");
+		if (ret)
+			dev_warn(&pdev->dev, "fail to request pwr gpio\n");
+	}
+}
+
 /*!
  * This function is called by the driver framework to initialize the LDB
  * device.
@@ -607,6 +868,8 @@ static int ldb_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, ldb);
 
+	ldb_disp_pwr_up(pdev);
+
 alloc_failed:
 	return ret;
 }
@@ -623,6 +886,7 @@ static int ldb_remove(struct platform_device *pdev)
 static struct platform_driver mxcldb_driver = {
 	.driver = {
 		   .name = "mxc_ldb",
+		   .of_match_table = mxc_ldb_dt_ids,
 		   },
 	.probe = ldb_probe,
 	.remove = ldb_remove,

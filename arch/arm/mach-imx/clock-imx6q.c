@@ -18,6 +18,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/suspend.h>
 #include <asm/div64.h>
 #include <asm/mach/map.h>
 #include <mach/clock.h>
@@ -335,6 +336,12 @@
 #define FREQ_650M	650000000
 #define FREQ_1300M	1300000000
 
+#ifdef CONFIG_CLK_DEBUG
+#define __INIT_CLK_DEBUG(n)	.name = #n,
+#else
+#define __INIT_CLK_DEBUG(n)
+#endif
+
 static struct clk pll1_sys;
 static struct clk pll2_bus;
 static struct clk pll3_usb_otg;
@@ -415,14 +422,17 @@ static unsigned long get_low_reference_clock_rate(struct clk *clk)
 }
 
 static struct clk ckil_clk = {
+	__INIT_CLK_DEBUG(ckil_clk)
 	.get_rate = get_low_reference_clock_rate,
 };
 
 static struct clk ckih_clk = {
+	__INIT_CLK_DEBUG(ckih_clk)
 	.get_rate = get_high_reference_clock_rate,
 };
 
 static struct clk osc_clk = {
+	__INIT_CLK_DEBUG(osc_clk)
 	.get_rate = get_oscillator_reference_clock_rate,
 };
 
@@ -677,6 +687,7 @@ static int pll_set_rate(struct clk *clk, unsigned long rate)
 
 #define DEF_PLL(name)					\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.enable		= pll_enable,		\
 		.disable	= pll_disable,		\
 		.get_rate	= name##_get_rate,	\
@@ -796,6 +807,7 @@ static void pfd_disable(struct clk *clk)
 
 #define DEF_PFD(name, er, es, p)			\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.enable_reg	= er,			\
 		.enable_shift	= es,			\
 		.enable		= pfd_enable,		\
@@ -820,6 +832,7 @@ static unsigned long pll2_200m_get_rate(struct clk *clk)
 }
 
 static struct clk pll2_200m = {
+	__INIT_CLK_DEBUG(pll2_200m)
 	.parent = &pll2_pfd_400m,
 	.get_rate = pll2_200m_get_rate,
 };
@@ -830,6 +843,7 @@ static unsigned long pll3_120m_get_rate(struct clk *clk)
 }
 
 static struct clk pll3_120m = {
+	__INIT_CLK_DEBUG(pll3_120m)
 	.parent = &pll3_usb_otg,
 	.get_rate = pll3_120m_get_rate,
 };
@@ -840,6 +854,7 @@ static unsigned long pll3_80m_get_rate(struct clk *clk)
 }
 
 static struct clk pll3_80m = {
+	__INIT_CLK_DEBUG(pll3_80m)
 	.parent = &pll3_usb_otg,
 	.get_rate = pll3_80m_get_rate,
 };
@@ -850,6 +865,7 @@ static unsigned long pll3_60m_get_rate(struct clk *clk)
 }
 
 static struct clk pll3_60m = {
+	__INIT_CLK_DEBUG(pll3_60m)
 	.parent = &pll3_usb_otg,
 	.get_rate = pll3_60m_get_rate,
 };
@@ -877,6 +893,7 @@ static int pll1_sw_clk_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk pll1_sw_clk = {
+	__INIT_CLK_DEBUG(pll1_sw_clk)
 	.parent = &pll1_sys,
 	.set_parent = pll1_sw_clk_set_parent,
 };
@@ -1696,6 +1713,7 @@ static int _clk_set_parent(struct clk *clk, struct clk *parent)
 
 #define DEF_NG_CLK(name, p)				\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.get_rate	= _clk_get_rate,	\
 		.set_rate	= _clk_set_rate,	\
 		.round_rate	= _clk_round_rate,	\
@@ -1723,6 +1741,7 @@ DEF_NG_CLK(asrc_serial_clk,	&pll3_usb_otg);
 
 #define DEF_CLK(name, er, es, p, s)			\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.enable_reg	= er,			\
 		.enable_shift	= es,			\
 		.enable		= _clk_enable,		\
@@ -1777,6 +1796,7 @@ DEF_CLK(mmdc_ch0_axi_clk, CCGR3, CG10, &periph_clk,	  &mmdc_ch0_ipg_clk);
 DEF_CLK(mmdc_ch1_ipg_clk, CCGR3, CG13, &ipg_clk,	  NULL);
 DEF_CLK(mmdc_ch1_axi_clk, CCGR3, CG11, &periph2_clk,	  &mmdc_ch1_ipg_clk);
 DEF_CLK(openvg_axi_clk,   CCGR3, CG13, &axi_clk,	  NULL);
+DEF_CLK(ocram_clk,   	  CCGR3, CG14, &ahb_clk,	  NULL);
 DEF_CLK(pwm1_clk,	  CCGR4, CG8,  &ipg_perclk,	  NULL);
 DEF_CLK(pwm2_clk,	  CCGR4, CG9,  &ipg_perclk,	  NULL);
 DEF_CLK(pwm3_clk,	  CCGR4, CG10, &ipg_perclk,	  NULL);
@@ -1800,7 +1820,7 @@ DEF_CLK(usdhc3_clk,	  CCGR6, CG3,  &pll2_pfd_400m,	  NULL);
 DEF_CLK(usdhc4_clk,	  CCGR6, CG4,  &pll2_pfd_400m,	  NULL);
 DEF_CLK(emi_slow_clk,	  CCGR6, CG5,  &axi_clk,	  NULL);
 DEF_CLK(vdo_axi_clk,	  CCGR6, CG6,  &axi_clk,	  NULL);
-DEF_CLK(vpu_clk,	  CCGR6, CG7,  &axi_clk,	  NULL);
+DEF_CLK(vpu_clk,	  CCGR6, CG7,  &axi_clk,	  &ocram_clk);
 
 static int pcie_clk_enable(struct clk *clk)
 {
@@ -1825,6 +1845,7 @@ static void pcie_clk_disable(struct clk *clk)
 }
 
 static struct clk pcie_clk = {
+	__INIT_CLK_DEBUG(pcie_clk)
 	.enable_reg = CCGR4,
 	.enable_shift = CG0,
 	.enable = pcie_clk_enable,
@@ -1857,6 +1878,7 @@ static void sata_clk_disable(struct clk *clk)
 }
 
 static struct clk sata_clk = {
+	__INIT_CLK_DEBUG(sata_clk)
 	.enable_reg = CCGR5,
 	.enable_shift = CG2,
 	.enable = sata_clk_enable,
@@ -1904,14 +1926,64 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "iim_clk", iim_clk),
 	_REGISTER_CLOCK(NULL, "mlb_clk", mlb_clk),
 	_REGISTER_CLOCK(NULL, "openvg_axi_clk", openvg_axi_clk),
-	_REGISTER_CLOCK(NULL, "pwm1_clk", pwm1_clk),
-	_REGISTER_CLOCK(NULL, "pwm2_clk", pwm2_clk),
-	_REGISTER_CLOCK(NULL, "pwm3_clk", pwm3_clk),
-	_REGISTER_CLOCK(NULL, "pwm4_clk", pwm4_clk),
+	_REGISTER_CLOCK("2080000.pwm", NULL, pwm1_clk),
+	_REGISTER_CLOCK("2084000.pwm", NULL, pwm2_clk),
+	_REGISTER_CLOCK("2088000.pwm", NULL, pwm3_clk),
+	_REGISTER_CLOCK("208c000.pwm", NULL, pwm4_clk),
 	_REGISTER_CLOCK(NULL, "gpmi_io_clk", gpmi_io_clk),
 	_REGISTER_CLOCK(NULL, "usboh3_clk", usboh3_clk),
 	_REGISTER_CLOCK(NULL, "sata_clk", sata_clk),
+	_REGISTER_CLOCK(NULL, "ipu1_clk", ipu1_clk),
+	_REGISTER_CLOCK(NULL, "ipu2_clk", ipu2_clk),
+	_REGISTER_CLOCK(NULL, "ipu1_di0_clk", ipu1_di0_clk),
+	_REGISTER_CLOCK(NULL, "ipu1_di1_clk", ipu1_di1_clk),
+	_REGISTER_CLOCK(NULL, "ipu2_di0_clk", ipu2_di0_clk),
+	_REGISTER_CLOCK(NULL, "ipu2_di1_clk", ipu2_di1_clk),
+	_REGISTER_CLOCK(NULL, "hdmi_iahb_clk", hdmi_iahb_clk),
+	_REGISTER_CLOCK(NULL, "ldb_di0_clk", ldb_di0_clk),
+	_REGISTER_CLOCK(NULL, "ldb_di1_clk", ldb_di1_clk),
+	_REGISTER_CLOCK(NULL, "vpu_clk", vpu_clk),
+	_REGISTER_CLOCK(NULL, "gpt_clk", gpt_clk),
 };
+
+static u32 ccr, clpcr, ccgr1, ccgr6;
+#define BP_CCR_RBC_EN	27
+void imx6q_ccm_pre_suspend(suspend_state_t state)
+{
+	ccr = readl_relaxed(CCR);
+	if (state == PM_SUSPEND_MEM) {
+		writel_relaxed(ccr | (1 << BP_CCR_RBC_EN), CCR);
+	}
+	clpcr = readl_relaxed(CLPCR);
+
+	/* for GPU */
+	ccgr1 = readl_relaxed(CCGR1);
+	ccgr6 = readl_relaxed(CCGR6);
+}
+
+void imx6q_ccm_gpu_pre_suspend(void)
+{
+	/* disable clocks */
+	writel_relaxed(ccgr1 & 0xf0ffffff, CCGR1);
+	writel_relaxed(ccgr6 & 0x00003fff, CCGR6);
+}
+
+void imx6q_ccm_gpu_post_resume(void)
+{
+	/* enable clocks */
+	writel_relaxed(ccgr1 | 0x0f000000, CCGR1);
+	writel_relaxed(ccgr6 | 0x0000c000, CCGR6);
+}
+
+void imx6q_ccm_post_resume(void)
+{
+	writel_relaxed(ccr, CCR);
+	writel_relaxed(clpcr, CLPCR);
+
+	/* for GPU */
+	writel_relaxed(ccgr1, CCGR1);
+	writel_relaxed(ccgr6, CCGR6);
+}
 
 int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)
 {
@@ -1940,9 +2012,18 @@ int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)
 		val |= BM_CLPCR_SBYOS;
 		val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
 		break;
+	case ARM_POWER_OFF:
+		val |= 0x2 << BP_CLPCR_LPM;
+		val |= 0x3 << BP_CLPCR_STBY_COUNT;
+		val |= BM_CLPCR_VSTBY;
+		val |= BM_CLPCR_SBYOS;
+		val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
+		val |= BM_CLPCR_WB_PER_AT_LPM;
+		break;
 	default:
 		return -EINVAL;
 	}
+
 	writel_relaxed(val, CLPCR);
 
 	return 0;
@@ -1978,13 +2059,15 @@ int __init mx6q_clocks_init(void)
 			oscillator_reference = rate;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(lookups); i++)
+	for (i = 0; i < ARRAY_SIZE(lookups); i++) {
 		clkdev_add(&lookups[i]);
+		clk_debug_register(lookups[i].clk);
+	}
 
 	/* only keep necessary clocks on */
-	writel_relaxed(0x3 << CG0  | 0x3 << CG1  | 0x3 << CG2,	CCGR0);
+	writel_relaxed(0x3 << CG0  | 0x3 << CG1  | 0x3 << CG2,  CCGR0);
 	writel_relaxed(0x3 << CG8  | 0x3 << CG9  | 0x3 << CG10,	CCGR2);
-	writel_relaxed(0x3 << CG10 | 0x3 << CG12,		CCGR3);
+	writel_relaxed(0x3 << CG10 | 0x3 << CG12 | 0x1 << CG14,	CCGR3);
 	writel_relaxed(0x3 << CG4  | 0x3 << CG6  | 0x3 << CG7,	CCGR4);
 	writel_relaxed(0x3 << CG0,				CCGR5);
 	writel_relaxed(0,					CCGR6);
@@ -2004,6 +2087,9 @@ int __init mx6q_clocks_init(void)
 	clk_set_parent(&asrc_serial_clk, &pll3_usb_otg);
 	clk_set_rate(&asrc_serial_clk, 1500000);
 	clk_set_rate(&enfc_clk, 11000000);
+
+	/* Lower the ipg_perclk frequency to 8.25MHz. */
+	clk_set_rate(&ipg_perclk, 8250000);
 
 	/*
 	 * Before pinctrl API is available, we have to rely on the pad

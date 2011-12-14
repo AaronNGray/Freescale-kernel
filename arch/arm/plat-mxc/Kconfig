@@ -110,6 +110,7 @@ config ARCH_MXC_AUDMUX_V2
 
 config IRAM_ALLOC
 	bool
+	default y
 	select GENERIC_ALLOCATOR
 
 config CLK_DEBUG

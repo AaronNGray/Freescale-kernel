@@ -21,6 +21,9 @@
 #define BP_MMDC_MAPSR_PSD	0
 #define BP_MMDC_MAPSR_PSS	4
 
+static int idx;
+void __iomem *mmdc_base_array[2];
+
 static int __devinit imx_mmdc_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -30,6 +33,8 @@ static int __devinit imx_mmdc_probe(struct platform_device *pdev)
 
 	mmdc_base = of_iomap(np, 0);
 	WARN_ON(!mmdc_base);
+
+	mmdc_base_array[idx++] = mmdc_base;
 
 	reg = mmdc_base + MMDC_MAPSR;
 
