@@ -172,8 +172,8 @@ do_tools?=true
 else
 do_tools?=false
 endif
-tools_pkg_name=$(common_src_pkg_name)-tools-$(abi_release)
-tools_common_pkg_name=$(common_src_pkg_name)-tools-common
+tools_pkg_name=$(src_pkg_name)-tools-$(abi_release)
+tools_common_pkg_name=$(src_pkg_name)-tools-common
 
 # The general flavour specific image package.
 do_flavour_image_package=true
