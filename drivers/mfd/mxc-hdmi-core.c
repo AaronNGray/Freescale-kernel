@@ -518,11 +518,13 @@ static int mxc_hdmi_core_probe(struct platform_device *pdev)
 	/* register hdmi video */
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	pdevinfo_hdmi_v.name = "mxc_hdmi";
+	pdevinfo_hdmi_v.id = pdev->id;
 	pdevinfo_hdmi_v.res = res;
 	pdevinfo_hdmi_v.num_res = 1;
 	pdevinfo_hdmi_v.data = &hdmi_vdata;
 	pdevinfo_hdmi_v.size_data = sizeof(hdmi_vdata);
 	pdevinfo_hdmi_v.dma_mask = DMA_BIT_MASK(32);
+	pdevinfo_hdmi_v.parent = &pdev->dev;
 	platform_device_register_full(&pdevinfo_hdmi_v);
 
 	return ret;
