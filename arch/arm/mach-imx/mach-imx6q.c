@@ -27,6 +27,47 @@
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <mach/iram.h>
+#include <mach/iomux-mx6q.h>
+
+static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
+	/* DISPLAY */
+	MX6Q_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK,
+	MX6Q_PAD_DI0_PIN15__IPU1_DI0_PIN15,
+	MX6Q_PAD_DI0_PIN2__IPU1_DI0_PIN2,
+	MX6Q_PAD_DI0_PIN3__IPU1_DI0_PIN3,
+	MX6Q_PAD_DISP0_DAT0__IPU1_DISP0_DAT_0,
+	MX6Q_PAD_DISP0_DAT1__IPU1_DISP0_DAT_1,
+	MX6Q_PAD_DISP0_DAT2__IPU1_DISP0_DAT_2,
+	MX6Q_PAD_DISP0_DAT3__IPU1_DISP0_DAT_3,
+	MX6Q_PAD_DISP0_DAT4__IPU1_DISP0_DAT_4,
+	MX6Q_PAD_DISP0_DAT5__IPU1_DISP0_DAT_5,
+	MX6Q_PAD_DISP0_DAT6__IPU1_DISP0_DAT_6,
+	MX6Q_PAD_DISP0_DAT7__IPU1_DISP0_DAT_7,
+	MX6Q_PAD_DISP0_DAT8__IPU1_DISP0_DAT_8,
+	MX6Q_PAD_DISP0_DAT9__IPU1_DISP0_DAT_9,
+	MX6Q_PAD_DISP0_DAT10__IPU1_DISP0_DAT_10,
+	MX6Q_PAD_DISP0_DAT11__IPU1_DISP0_DAT_11,
+	MX6Q_PAD_DISP0_DAT12__IPU1_DISP0_DAT_12,
+	MX6Q_PAD_DISP0_DAT13__IPU1_DISP0_DAT_13,
+	MX6Q_PAD_DISP0_DAT14__IPU1_DISP0_DAT_14,
+	MX6Q_PAD_DISP0_DAT15__IPU1_DISP0_DAT_15,
+	MX6Q_PAD_DISP0_DAT16__IPU1_DISP0_DAT_16,
+	MX6Q_PAD_DISP0_DAT17__IPU1_DISP0_DAT_17,
+	MX6Q_PAD_DISP0_DAT18__IPU1_DISP0_DAT_18,
+	MX6Q_PAD_DISP0_DAT19__IPU1_DISP0_DAT_19,
+	MX6Q_PAD_DISP0_DAT20__IPU1_DISP0_DAT_20,
+	MX6Q_PAD_DISP0_DAT21__IPU1_DISP0_DAT_21,
+	MX6Q_PAD_DISP0_DAT22__IPU1_DISP0_DAT_22,
+	MX6Q_PAD_DISP0_DAT23__IPU1_DISP0_DAT_23,
+	/* PWM1 */
+	MX6Q_PAD_SD1_CMD__PWM4_PWMO,
+	/* I2C2 */
+	MX6Q_PAD_KEY_COL3__I2C2_SCL,
+	MX6Q_PAD_KEY_ROW3__I2C2_SDA,
+	/* GPIO */
+	MX6Q_PAD_NANDF_D0__GPIO_2_0,
+	MX6Q_PAD_EIM_D23__GPIO_3_23,
+};
 
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -45,9 +86,12 @@ static int ksz9021rn_phy_fixup(struct phy_device *phydev)
 
 static void __init imx6q_init_machine(void)
 {
-	if (of_machine_is_compatible("fsl,imx6q-sabrelite"))
+	if (of_machine_is_compatible("fsl,imx6q-sabrelite")) {
 		phy_register_fixup_for_uid(PHY_ID_KSZ9021, MICREL_PHY_ID_MASK,
 					   ksz9021rn_phy_fixup);
+		mxc_iomux_v3_setup_multiple_pads(imx6q_sabrelite_pads,
+					ARRAY_SIZE(imx6q_sabrelite_pads));
+	}
 
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 
