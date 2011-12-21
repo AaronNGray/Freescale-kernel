@@ -10,6 +10,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
+#include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
@@ -20,6 +21,7 @@
 #include <linux/micrel_phy.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
+#include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/common.h>
@@ -54,11 +56,27 @@ static void __init imx6q_init_machine(void)
 	imx6q_pm_init();
 }
 
+static struct map_desc imx_mx6q_iomux_desc[] = {
+	{
+		.virtual	= MX6Q_IO_P2V(MX6Q_IOMUXC_BASE_ADDR),
+		.pfn		= __phys_to_pfn(MX6Q_IOMUXC_BASE_ADDR),
+		.length		= MX6Q_IOMUXC_SIZE,
+		.type		= MT_DEVICE,
+	},
+};
+
+static void __init imx6q_iomux_map_io(void)
+{
+	iotable_init(imx_mx6q_iomux_desc, ARRAY_SIZE(imx_mx6q_iomux_desc));
+	mxc_iomux_v3_init(MX6Q_IO_ADDRESS(MX6Q_IOMUXC_BASE_ADDR));
+}
+
 static void __init imx6q_map_io(void)
 {
 	imx_lluart_map_io();
 	imx_scu_map_io();
 	imx6q_clock_map_io();
+	imx6q_iomux_map_io();
 }
 
 static int __init imx6q_gpio_add_irq_domain(struct device_node *np,
