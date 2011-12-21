@@ -29,8 +29,9 @@
 #define MX6Q_CCM_SIZE			0x4000
 #define MX6Q_ANATOP_BASE_ADDR		0x020c8000
 #define MX6Q_ANATOP_SIZE		0x1000
+#define MX6Q_UART2_BASE_ADDR		0x021e8000
 #define MX6Q_UART4_BASE_ADDR		0x021f0000
-#define MX6Q_UART4_SIZE			0x4000
+#define MX6Q_UART_SIZE			0x4000
 
 /* The last 4K is for cpu hotplug to workaround wdog issue */
 #define MX6Q_IRAM_BASE_ADDR		0x00900000
