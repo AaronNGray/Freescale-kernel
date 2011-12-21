@@ -602,6 +602,7 @@ config SOC_IMX6Q
 	select HAVE_IMX_GPC
 	select HAVE_IMX_MMDC
 	select HAVE_IMX_SRC
+	select ARM_CPU_SUSPEND if PM
 	select USE_OF
 
 	help
