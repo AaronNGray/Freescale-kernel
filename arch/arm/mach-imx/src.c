@@ -22,7 +22,7 @@
 #define BP_SRC_SCR_CORE1_RST		14
 #define BP_SRC_SCR_CORE1_ENABLE		22
 
-static void __iomem *src_base;
+void __iomem *src_base;
 
 #ifndef CONFIG_SMP
 #define cpu_logical_map(cpu)		0
