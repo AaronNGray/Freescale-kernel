@@ -1,6 +1,8 @@
-linux-linaro-lt-mx6 (3.2.0-1000.3) UNRELEASED; urgency=low
+linux-linaro-lt-mx6 (3.2.0-1000.3) oneiric; urgency=low
 
   * Rebased against tag lt-3.2-imx6-20111222
+  * LINARO: update configs - add CPUFREQ and GPU support
+  * tty: serial: imx: move del_timer_sync() to avoid potential deadlock
 
  -- Eric Miao <eric.miao@linaro.org>  Thu, 22 Dec 2011 17:31:29 +0800
 
