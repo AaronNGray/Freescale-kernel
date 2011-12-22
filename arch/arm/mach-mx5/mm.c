@@ -14,7 +14,9 @@
 #include <linux/mm.h>
 #include <linux/init.h>
 
+#include <asm/sizes.h>
 #include <asm/mach/map.h>
+#include <asm/pmu.h>
 
 #include <mach/hardware.h>
 #include <mach/common.h>
@@ -92,6 +94,9 @@ void __init imx51_init_early(void)
 	mxc_iomux_v3_init(MX51_IO_ADDRESS(MX51_IOMUXC_BASE_ADDR));
 	mxc_arch_reset_init(MX51_IO_ADDRESS(MX51_WDOG1_BASE_ADDR));
 	pm_idle = imx5_idle;
+
+	if (!system_rev)
+		system_rev = 0x51000;
 }
 
 void __init imx53_init_early(void)
@@ -99,6 +104,10 @@ void __init imx53_init_early(void)
 	mxc_set_cpu_type(MXC_CPU_MX53);
 	mxc_iomux_v3_init(MX53_IO_ADDRESS(MX53_IOMUXC_BASE_ADDR));
 	mxc_arch_reset_init(MX53_IO_ADDRESS(MX53_WDOG1_BASE_ADDR));
+	init_consistent_dma_size(SZ_128M);
+
+	if (!system_rev)
+		system_rev = 0x53000;
 }
 
 void __init mx50_init_irq(void)
@@ -130,7 +139,7 @@ static struct sdma_script_start_addrs imx51_sdma_script __initdata = {
 };
 
 static struct sdma_platform_data imx51_sdma_pdata __initdata = {
-	.fw_name = "sdma-imx51.bin",
+	.fw_name = "imx/sdma/sdma-imx51-to3.bin",
 	.script_addrs = &imx51_sdma_script,
 };
 
@@ -149,7 +158,7 @@ static struct sdma_script_start_addrs imx53_sdma_script __initdata = {
 };
 
 static struct sdma_platform_data imx53_sdma_pdata __initdata = {
-	.fw_name = "sdma-imx53.bin",
+	.fw_name = "imx/sdma/sdma-imx53-to1.bin",
 	.script_addrs = &imx53_sdma_script,
 };
 
@@ -164,6 +173,21 @@ void __init imx50_soc_init(void)
 	mxc_register_gpio("imx31-gpio", 5, MX50_GPIO6_BASE_ADDR, SZ_16K, MX50_INT_GPIO6_LOW, MX50_INT_GPIO6_HIGH);
 }
 
+static struct resource mx5_pmu_resources[] = {
+	{
+		/* MX51/53 share the same IRQ number */
+		.start	= MX51_INT_PMU,
+		.flags	= IORESOURCE_IRQ,
+	}
+};
+
+static struct platform_device mx5_pmu_device = {
+	.name		= "arm-pmu",
+	.id		= ARM_PMU_DEVICE_CPU,
+	.resource	= &mx5_pmu_resources,
+	.num_resources	= 1,
+};
+
 void __init imx51_soc_init(void)
 {
 	/* i.mx51 has the i.mx31 type gpio */
@@ -174,6 +198,8 @@ void __init imx51_soc_init(void)
 
 	/* i.mx51 has the i.mx35 type sdma */
 	imx_add_imx_sdma("imx35-sdma", MX51_SDMA_BASE_ADDR, MX51_INT_SDMA, &imx51_sdma_pdata);
+
+	platform_device_register(&mx5_pmu_device);
 }
 
 void __init imx53_soc_init(void)
@@ -189,4 +215,6 @@ void __init imx53_soc_init(void)
 
 	/* i.mx53 has the i.mx35 type sdma */
 	imx_add_imx_sdma("imx35-sdma", MX53_SDMA_BASE_ADDR, MX53_INT_SDMA, &imx53_sdma_pdata);
+
+	platform_device_register(&mx5_pmu_device);
 }
