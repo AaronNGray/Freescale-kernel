@@ -54,4 +54,6 @@
  */
 #define MX6Q_SATA_BASE_ADDR		0x02200000
 
+#define MX6Q_GPU_3D_BASE_ADDR		0x00130000
+
 #endif	/* __MACH_MX6Q_H__ */

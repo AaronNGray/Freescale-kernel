@@ -25,6 +25,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/clk.h>
 #include <linux/fsl_devices.h>
+#include <linux/memblock.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
@@ -36,6 +37,7 @@
 #include <mach/iomux-mx6q.h>
 #include <mach/ipu-v3.h>
 #include <mach/mxc_vpu.h>
+#include <mach/viv_gpu.h>
 #include "devices-imx6q.h"
 
 static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
@@ -170,10 +172,15 @@ static struct mxc_vpu_platform_data vpu_pdata = {
 	.reset = mx6q_vpu_reset,
 };
 
+static struct viv_gpu_platform_data gpu_pdata = {
+	.reserved_mem_size = SZ_128M,
+};
+
 static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,imx6q-ipu", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,imx6q-ipu", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
+	OF_DEV_AUXDATA("viv,galcore", MX6Q_GPU_3D_BASE_ADDR, "galcore", &gpu_pdata),
 	OF_DEV_AUXDATA("fsl,imx6q-ahci", MX6Q_SATA_BASE_ADDR, "imx6q-ahci", &imx_sata_pdata),
 };
 
@@ -306,11 +313,25 @@ static const char *imx6q_dt_compat[] __initdata = {
 	NULL,
 };
 
+static void __init imx6q_sabrelite_reserve(void)
+{
+	phys_addr_t phys;
+
+	if (gpu_pdata.reserved_mem_size) {
+		phys = memblock_alloc_base(gpu_pdata.reserved_mem_size,
+					   SZ_4K, SZ_2G);
+		memblock_free(phys, gpu_pdata.reserved_mem_size);
+		memblock_remove(phys, gpu_pdata.reserved_mem_size);
+		gpu_pdata.reserved_mem_base = phys;
+	}
+}
+
 DT_MACHINE_START(IMX6Q, "Freescale i.MX6 Quad (Device Tree)")
 	.map_io		= imx6q_map_io,
 	.init_irq	= imx6q_init_irq,
 	.handle_irq	= imx6q_handle_irq,
 	.timer		= &imx6q_timer,
+	.reserve 	= imx6q_sabrelite_reserve,
 	.init_machine	= imx6q_init_machine,
 	.dt_compat	= imx6q_dt_compat,
 	.restart	= imx6q_restart,
