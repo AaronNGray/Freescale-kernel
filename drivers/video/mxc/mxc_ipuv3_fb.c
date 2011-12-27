@@ -92,6 +92,7 @@ struct mxcfb_info {
 	void *ipu;
 	struct fb_info *ovfbi;
 
+	struct mxc_dispdrv_handle *dispdrv;
 	struct ipuv3_fb_platform_data of_data;
 };
 
@@ -322,6 +323,15 @@ static int mxcfb_set_par(struct fb_info *fbi)
 	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
 
 	dev_dbg(fbi->device, "Reconfiguring framebuffer\n");
+
+	if (mxc_fbi->dispdrv && mxc_fbi->dispdrv->drv->setup) {
+		retval = mxc_fbi->dispdrv->drv->setup(mxc_fbi->dispdrv, fbi);
+		if (retval < 0) {
+			dev_err(fbi->device, "setup error, dispdrv:%s.\n",
+					mxc_fbi->dispdrv->drv->name);
+			return -EINVAL;
+		}
+	}
 
 	ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
 	ipu_disable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
@@ -1694,10 +1704,11 @@ static int mxcfb_dispdrv_init(struct platform_device *pdev,
 
 	dev_info(&pdev->dev, "register mxc display driver %s\n", disp_dev);
 
-	ret = mxc_dispdrv_init(disp_dev, &setting);
-	if (ret < 0) {
-		dev_err(&pdev->dev,
-			"register mxc display driver failed with %d\n", ret);
+	mxcfbi->dispdrv = mxc_dispdrv_gethandle(disp_dev, &setting);
+	if (IS_ERR(mxcfbi->dispdrv)) {
+		ret = PTR_ERR(mxcfbi->dispdrv);
+		dev_err(&pdev->dev, "NO mxc display driver found!\n");
+		return ret;
 	} else {
 		/* fix-up  */
 		mxcfbi->ipu_di_pix_fmt = setting.if_fmt;
