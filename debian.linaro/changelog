@@ -1,4 +1,4 @@
-linux-linaro-lt-mx6 (3.2.0-1000.5) UNRELEASED; urgency=low
+linux-linaro-lt-mx6 (3.2.0-1000.5) oneiric; urgency=low
 
   * Rebased against tag lt-3.2-imx6-20111230
 
@@ -33,6 +33,10 @@ linux-linaro-lt-mx6 (3.2.0-1000.5) UNRELEASED; urgency=low
     * Merged two fixes
       tty: serial: imx: move del_timer_sync() to avoid potential deadlock
       ARM: imx6: fix v7_invalidate_l1 by adding I-Cache invalidation
+
+  * LINARO: update configs - enable IIM, RTC, WDT and eGalax touch
+
+  * LINARO: update configs - improve boot up speed
 
  -- Eric Miao <eric.miao@linaro.org>  Fri, 30 Dec 2011 23:06:43 +0800
 
