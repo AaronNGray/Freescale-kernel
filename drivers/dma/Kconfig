@@ -216,7 +216,7 @@ config PCH_DMA
 
 config IMX_SDMA
 	tristate "i.MX SDMA support"
-	depends on ARCH_MX25 || SOC_IMX31 || SOC_IMX35 || ARCH_MX5
+	depends on ARCH_MX25 || SOC_IMX31 || SOC_IMX35 || ARCH_MX5 || SOC_IMX6Q
 	select DMA_ENGINE
 	help
 	  Support the i.MX SDMA engine. This engine is integrated into
