@@ -54,6 +54,18 @@
 				status = "okay";
 			};
 
+			i2c@021a0000 { /* I2C1 */
+				status = "okay";
+				clock-frequency = <100000>;
+
+				codec: sgtl5000@0a {
+					compatible = "fsl,sgtl5000";
+					reg = <0x0a>;
+					VDDA-supply = <&reg_2P5V>;
+					VDDIO-supply = <&reg_3P3V>;
+				};
+			};
+
 			i2c@021a4000 { /* I2C2 */
 				status = "okay";
 				clock-frequency = <100000>;
