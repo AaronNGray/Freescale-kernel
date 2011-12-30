@@ -39,6 +39,9 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/bitops.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 
 #define REPORT_MODE_SINGLE		0x1
 #define REPORT_MODE_VENDOR		0x3
@@ -68,6 +71,7 @@ struct egalax_ts {
 	struct i2c_client		*client;
 	struct input_dev		*input_dev;
 	struct egalax_pointer		events[MAX_SUPPORT_POINTS];
+	int				gpio_irq;
 };
 
 static irqreturn_t egalax_ts_interrupt(int irq, void *dev_id)
@@ -91,7 +95,7 @@ retry:
 
 	dev_dbg(&client->dev, "recv ret:%d", ret);
 	for (i = 0; i < MAX_I2C_DATA_LEN; i++)
-		printk(KERN_DEBUG " %x ", buf[i]);
+		dev_dbg(&client->dev, " %x ", buf[i]);
 
 	if (buf[0] != REPORT_MODE_VENDOR
 	    && buf[0] != REPORT_MODE_SINGLE
@@ -180,23 +184,24 @@ retry:
 	return IRQ_HANDLED;
 }
 
-static int egalax_wake_up_device(struct i2c_client *client)
+static void egalax_wake_up_device(struct i2c_client *client)
 {
-	int gpio = irq_to_gpio(client->irq);
-	int ret;
+	struct egalax_ts *data = i2c_get_clientdata(client);
+	int ret, gpio_irq = data->gpio_irq;
 
-	ret = gpio_request(gpio, "egalax_irq");
+	if (!gpio_is_valid(gpio_irq))
+		return;
+
+	ret = gpio_request_one(gpio_irq, GPIOF_OUT_INIT_HIGH, "egalax_irq");
 	if (ret < 0) {
 		dev_err(&client->dev, "request gpio failed:%d\n", ret);
-		return ret;
+		return;
 	}
 	/* wake up controller via an falling edge on IRQ. */
-	gpio_direction_output(gpio, 0);
-	gpio_set_value(gpio, 1);
+	gpio_set_value(gpio_irq, 0);
 	/* controller should be waken up, return irq.  */
-	gpio_direction_input(gpio);
-	gpio_free(gpio);
-	return 0;
+	gpio_direction_input(gpio_irq);
+	gpio_free(gpio_irq);
 }
 
 static int egalax_7200_firmware_version(struct i2c_client *client)
@@ -212,6 +217,7 @@ static int egalax_7200_firmware_version(struct i2c_client *client)
 static int __devinit egalax_ts_probe(struct i2c_client *client,
 				       const struct i2c_device_id *id)
 {
+	struct device_node *n = client->dev.of_node;
 	struct egalax_ts *data;
 	struct input_dev *input_dev;
 	int ret;
@@ -231,6 +237,12 @@ static int __devinit egalax_ts_probe(struct i2c_client *client,
 
 	data->client = client;
 	data->input_dev = input_dev;
+	data->gpio_irq = of_get_named_gpio(n, "interrupt-gpio", 0);
+	if (!gpio_is_valid(data->gpio_irq))
+		dev_warn(&client->dev, "invalid interrupt GPIO\n");
+
+	i2c_set_clientdata(client, data);
+
 	egalax_wake_up_device(client);
 	ret = egalax_7200_firmware_version(client);
 	if (ret < 0) {
@@ -275,10 +287,9 @@ static int __devinit egalax_ts_probe(struct i2c_client *client,
 		goto err_free_dev;
 	}
 
-	ret = input_register_device(data->input_dev);
+	return input_register_device(data->input_dev);
 	if (ret < 0)
 		goto err_free_irq;
-	i2c_set_clientdata(client, data);
 	return 0;
 
 err_free_irq:
@@ -324,15 +335,24 @@ static int egalax_ts_suspend(struct device *dev)
 static int egalax_ts_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
-	return egalax_wake_up_device(client);
+	egalax_wake_up_device(client);
+	return 0;
 }
 #endif
 
+static struct of_device_id egalax_dt_ids[] = {
+	{ .compatible = "eeti,egalax" },
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, imx_uart_dt_ids);
+
 static SIMPLE_DEV_PM_OPS(egalax_ts_pm_ops, egalax_ts_suspend, egalax_ts_resume);
+
 static struct i2c_driver egalax_ts_driver = {
 	.driver = {
 		.name = "egalax_ts",
 		.pm	= &egalax_ts_pm_ops,
+		.of_match_table	= egalax_dt_ids,
 	},
 	.id_table	= egalax_ts_id,
 	.probe		= egalax_ts_probe,

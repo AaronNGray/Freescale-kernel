@@ -67,6 +67,9 @@ static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	/* I2C2 */
 	MX6Q_PAD_KEY_COL3__I2C2_SCL,
 	MX6Q_PAD_KEY_ROW3__I2C2_SDA,
+	/* I2C3 */
+	MX6Q_PAD_GPIO_5__I2C3_SCL,
+	MX6Q_PAD_GPIO_16__I2C3_SDA,
 	/* GPIO */
 	MX6Q_PAD_NANDF_D0__GPIO_2_0,
 	MX6Q_PAD_EIM_D23__GPIO_3_23,

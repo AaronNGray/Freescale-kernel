@@ -63,6 +63,19 @@
 					reg = <0x50>;
 				};
 			};
+
+			i2c@021a8000 { /* I2C3 */
+				status = "okay";
+				clock-frequency = <400000>;
+
+				egalax@04 {
+					compatible = "eeti,egalax";
+					reg = <0x04>;
+					interrupt-parent = <&gpio1>;
+					interrupts = <9>;
+					interrupt-gpio = <&gpio1 9 0>;
+				};
+			};
 		};
 
 		hdmi@0x00120000 { /* HDMI */
