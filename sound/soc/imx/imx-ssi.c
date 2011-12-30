@@ -621,7 +621,7 @@ static int imx_ssi_probe_dt(struct platform_device *pdev)
 	if (of_get_property(np, "fsl,ssi-uses-dma", NULL))
 		ssi->flags |= IMX_SSI_DMA;
 
-	if (of_get_property(np, "fsl,ssi-asynchronous-mode", NULL))
+	if (of_get_property(np, "fsl,ssi-synchronous-mode", NULL))
 		ssi->flags |= IMX_SSI_SYN;
 
 	if (of_get_property(np, "fsl,ssi-network-mode", NULL))
