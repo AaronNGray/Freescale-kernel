@@ -359,6 +359,7 @@
 			};
 
 			snvs@020cc000 {
+				compatible = "fsl,snvs";
 				reg = <0x020cc000 0x4000>;
 				interrupts = <0 19 0x04 0 20 0x04>;
 			};
