@@ -22,6 +22,12 @@
 	};
 
 	soc {
+		aips-bus@02000000 { /* AIPS1 */
+			wdog@020bc000 { /* WDOG1 */
+				status = "okay";
+			};
+		};
+
 		aips-bus@02100000 { /* AIPS2 */
 			enet@02188000 {
 				phy-mode = "rgmii";
