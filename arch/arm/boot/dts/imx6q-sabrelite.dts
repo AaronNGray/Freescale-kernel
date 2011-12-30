@@ -23,6 +23,14 @@
 
 	soc {
 		aips-bus@02000000 { /* AIPS1 */
+			spba-bus@02000000 {
+				ssi@0202c000 { /* SSI2 */
+					status = "okay";
+					fsl,ssi-uses-dma;
+					fsl,ssi-synchronous-mode;
+				};
+			};
+
 			ldb@020e0000 {
 				disp-pwr-gpios = <&gpio1 0 0>; /* gpio2 0 */
 				mode = "sin0";
