@@ -46,6 +46,8 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 #include <linux/sched.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 /* Register definitions */
 #define	SNVS_HPSR	0x14	/* HP Status Register */
@@ -477,9 +479,14 @@ static int snvs_rtc_probe(struct platform_device *pdev)
 	if (!pdata)
 		return -ENOMEM;
 
+	ioaddr = ioremap(res->start, resource_size(res));
+	if (ioaddr == NULL) {
+		kfree(pdata);
+		return -ENOMEM;
+	}
+
 	pdata->baseaddr = res->start;
-	pdata->ioaddr = ioremap(pdata->baseaddr, 0xC00);
-	ioaddr = pdata->ioaddr;
+	pdata->ioaddr = ioaddr;
 
 	/* Configure and enable the RTC */
 	pdata->irq = platform_get_irq(pdev, 0);
@@ -511,6 +518,8 @@ static int snvs_rtc_probe(struct platform_device *pdev)
 	__raw_writel(0xFFFFFFFF, ioaddr + SNVS_LPSR);
 	udelay(100);
 
+	platform_set_drvdata(pdev, pdata);
+
 	rtc = rtc_device_register(pdev->name, &pdev->dev,
 				  &snvs_rtc_ops, THIS_MODULE);
 	if (IS_ERR(rtc)) {
@@ -519,7 +528,6 @@ static int snvs_rtc_probe(struct platform_device *pdev)
 	}
 
 	pdata->rtc = rtc;
-	platform_set_drvdata(pdev, pdata);
 
 	tv.tv_nsec = 0;
 	tv.tv_sec = rtc_read_lp_counter(ioaddr + SNVS_LPSRTCMR);
@@ -597,13 +605,20 @@ static int snvs_rtc_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id snvs_dt_ids[] = {
+	{ .compatible = "fsl,snvs" },
+	{ /* sentinel */ }
+};
+
 /*!
  * Contains pointers to the power management callback functions.
  */
 static struct platform_driver snvs_rtc_driver = {
 	.driver = {
-		   .name = "snvs_rtc",
-		   },
+		.name	= "snvs_rtc",
+		.owner	= THIS_MODULE,
+		.of_match_table = snvs_dt_ids,
+	},
 	.probe = snvs_rtc_probe,
 	.remove = __exit_p(snvs_rtc_remove),
 	.suspend = snvs_rtc_suspend,
