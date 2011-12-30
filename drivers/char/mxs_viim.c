@@ -11,12 +11,15 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
+#include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/err.h>
 #include <linux/mm.h>
 #include <linux/miscdevice.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 static unsigned long iim_reg_base0, iim_reg_end0, iim_reg_size0;
 static unsigned long iim_reg_base1, iim_reg_end1, iim_reg_size1;
@@ -147,11 +150,18 @@ static int mxs_viim_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxs_viim_dt_ids[] = {
+	{ .compatible = "fsl,imx6q-ocotp", },
+	{ /* sentinel */ }
+};
+
+
 static struct platform_driver mxs_viim_driver = {
 	.driver = {
-		   .owner = THIS_MODULE,
-		   .name = "imx_viim",
-		   },
+		.owner = THIS_MODULE,
+		.name = "imx_viim",
+		.of_match_table = mxs_viim_dt_ids,
+	},
 	.probe = mxs_viim_probe,
 	.remove = mxs_viim_remove,
 };
