@@ -29,6 +29,10 @@
 				ext_ref = "true";
 				lvds0 = <1 0>;
 			};
+
+			wdog@020bc000 { /* WDOG1 */
+				status = "okay";
+			};
 		};
 
 		aips-bus@02100000 { /* AIPS2 */
