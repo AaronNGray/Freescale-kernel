@@ -1668,6 +1668,7 @@ static struct multiplexer cko1_mux = {
 		&pll2_bus,
 		&pll1_sys,
 		&pll5_video,
+		&dummy_clk,
 		&axi_clk,
 		&enfc_clk,
 		&ipu1_di0_clk,
@@ -1749,7 +1750,7 @@ static int _clk_set_parent(struct clk *clk, struct clk *parent)
 			break;
 		i++;
 	}
-	if (!m->parents[i])
+	if (!m->parents[i] || m->parents[i] == &dummy_clk)
 		return -EINVAL;
 
 	val = readl_relaxed(m->reg);

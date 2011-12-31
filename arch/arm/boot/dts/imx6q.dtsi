@@ -422,7 +422,7 @@
 				compatible = "fsl,imx6q-sdma", "fsl,imx35-sdma";
 				reg = <0x020ec000 0x4000>;
 				interrupts = <0 2 0x04>;
-				fsl,sdma-ram-script-name = "sdma-imx6q-to1.bin";
+				fsl,sdma-ram-script-name = "imx/sdma/sdma-imx6q-to1.bin";
 			};
 		};
 

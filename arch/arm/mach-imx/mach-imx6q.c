@@ -35,6 +35,12 @@
 #include <mach/mxc_vpu.h>
 
 static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
+	/* AUDMUX */
+	MX6Q_PAD_SD2_DAT0__AUDMUX_AUD4_RXD,
+	MX6Q_PAD_SD2_DAT3__AUDMUX_AUD4_TXC,
+	MX6Q_PAD_SD2_DAT2__AUDMUX_AUD4_TXD,
+	MX6Q_PAD_SD2_DAT1__AUDMUX_AUD4_TXFS,
+
 	/* DISPLAY */
 	MX6Q_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK,
 	MX6Q_PAD_DI0_PIN15__IPU1_DI0_PIN15,
@@ -66,6 +72,11 @@ static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	MX6Q_PAD_DISP0_DAT23__IPU1_DISP0_DAT_23,
 	/* PWM1 */
 	MX6Q_PAD_SD1_CMD__PWM4_PWMO,
+	/* sgtl5000 clock */
+	MX6Q_PAD_GPIO_0__CCM_CLKO,
+       /* I2C1, SGTL5000 */
+        MX6Q_PAD_EIM_D21__I2C1_SCL,     /* GPIO3[21] */
+        MX6Q_PAD_EIM_D28__I2C1_SDA,     /* GPIO3[28] */
 	/* I2C2 */
 	MX6Q_PAD_KEY_COL3__I2C2_SCL,
 	MX6Q_PAD_KEY_ROW3__I2C2_SDA,
@@ -144,7 +155,6 @@ static int mx6_sabrelite_sgtl5000_init(void)
 		clk_put(clko);
 		return -1;
 	}
-
 	mx6_sabrelite_audio_data.sysclk = rate;
 	clk_set_rate(clko, rate);
 	clk_enable(clko);

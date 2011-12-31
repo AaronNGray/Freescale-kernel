@@ -275,9 +275,9 @@ static struct snd_soc_dai_link imx_sgtl5000_dai[] = {
 		.name		= "HiFi",
 		.stream_name	= "HiFi",
 		.codec_dai_name	= "sgtl5000",
-		.codec_name	= "sgtl5000.1-000a",
-		.cpu_dai_name	= "imx-ssi.1",
-		.platform_name	= "imx-pcm-audio.1",
+		.codec_name	= "sgtl5000.0-000a",
+		.cpu_dai_name	= "202c000.ssi",
+		.platform_name	= "imx-pcm-audio",
 		.init		= imx_3stack_sgtl5000_init,
 		.ops		= &imx_sgtl5000_hifi_ops,
 	},
@@ -361,7 +361,7 @@ static int __init imx_sgtl5000_init(void)
 	if (ret)
 		return -ENOMEM;
 
-	if (machine_is_mx35_3ds())
+	if (machine_is_mx35_3ds() || of_machine_is_compatible("fsl,imx6q-sabrelite"))
 		imx_sgtl5000_dai[0].codec_name = "sgtl5000.0-000a";
 	else
 		imx_sgtl5000_dai[0].codec_name = "sgtl5000.1-000a";
