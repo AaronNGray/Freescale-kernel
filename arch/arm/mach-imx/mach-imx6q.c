@@ -131,18 +131,12 @@ static struct mxc_audio_platform_data mx6_sabrelite_audio_data;
 static int mx6_sabrelite_sgtl5000_init(void)
 {
 	struct clk *clko;
-	struct clk *new_parent;
 	int rate;
 
 	clko = clk_get(NULL, "clko_clk");
 	if (IS_ERR(clko)) {
 		pr_err("can't get CLKO clock.\n");
 		return PTR_ERR(clko);
-	}
-	new_parent = clk_get(NULL, "ahb");
-	if (!IS_ERR(new_parent)) {
-		clk_set_parent(clko, new_parent);
-		clk_put(new_parent);
 	}
 	rate = clk_round_rate(clko, 16000000);
 	if (rate < 8000000 || rate > 27000000) {
