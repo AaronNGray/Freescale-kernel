@@ -20,6 +20,8 @@
 #include <linux/phy.h>
 #include <linux/micrel_phy.h>
 #include <linux/dma-mapping.h>
+#include <linux/clk.h>
+#include <linux/fsl_devices.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
@@ -124,6 +126,52 @@ static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
 };
 
+static struct mxc_audio_platform_data mx6_sabrelite_audio_data;
+
+static int mx6_sabrelite_sgtl5000_init(void)
+{
+	struct clk *clko;
+	struct clk *new_parent;
+	int rate;
+
+	clko = clk_get(NULL, "clko_clk");
+	if (IS_ERR(clko)) {
+		pr_err("can't get CLKO clock.\n");
+		return PTR_ERR(clko);
+	}
+	new_parent = clk_get(NULL, "ahb");
+	if (!IS_ERR(new_parent)) {
+		clk_set_parent(clko, new_parent);
+		clk_put(new_parent);
+	}
+	rate = clk_round_rate(clko, 16000000);
+	if (rate < 8000000 || rate > 27000000) {
+		pr_err("Error:SGTL5000 mclk freq %d out of range!\n", rate);
+		clk_put(clko);
+		return -1;
+	}
+
+	mx6_sabrelite_audio_data.sysclk = rate;
+	clk_set_rate(clko, rate);
+	clk_enable(clko);
+	return 0;
+}
+
+static struct mxc_audio_platform_data mx6_sabrelite_audio_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 4,
+	.init = mx6_sabrelite_sgtl5000_init,
+	.hp_gpio = -1,
+};
+
+static struct platform_device mx6_sabrelite_audio_device = {
+	.name = "imx-sgtl5000",
+	.dev = {
+		.platform_data = &mx6_sabrelite_audio_data,
+	},
+};
+
 static void __init imx6q_init_machine(void)
 {
 	if (of_machine_is_compatible("fsl,imx6q-sabrelite")) {
@@ -137,6 +185,9 @@ static void __init imx6q_init_machine(void)
 					imx6q_auxdata_lookup, NULL);
 
 	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
+
+	if (of_machine_is_compatible("fsl,imx6q-sabrelite"))
+		platform_device_register(&mx6_sabrelite_audio_device);
 
 	imx6q_pm_init();
 }
