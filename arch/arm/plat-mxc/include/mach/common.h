@@ -82,6 +82,7 @@ enum mxc_cpu_pwr_mode {
 	WAIT_UNCLOCKED_POWER_OFF,	/* WAIT + SRPG */
 	STOP_POWER_ON,		/* just STOP */
 	STOP_POWER_OFF,		/* STOP + SRPG */
+	ARM_POWER_OFF,          /* STOP + SRPG + ARM power off */
 };
 
 extern void mx5_cpu_lp_set(enum mxc_cpu_pwr_mode mode);
@@ -123,6 +124,7 @@ extern void imx_enable_cpu(int cpu, bool enable);
 extern void imx_set_cpu_jump(int cpu, void *jump_addr);
 extern void imx_src_init(void);
 extern void imx_gpc_init(void);
+extern bool imx_gpc_wake_irq_pending(void);
 extern void imx_gpc_pre_suspend(void);
 extern void imx_gpc_post_resume(void);
 extern void imx51_babbage_common_init(void);

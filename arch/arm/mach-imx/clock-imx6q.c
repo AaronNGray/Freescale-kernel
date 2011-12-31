@@ -115,6 +115,8 @@
 #define CG14		28
 #define CG15		30
 
+#define BM_CCR_RBC_EN			(0x1 << 27)
+
 #define BM_CCSR_PLL1_SW_SEL		(0x1 << 2)
 #define BM_CCSR_STEP_SEL		(0x1 << 8)
 
@@ -1916,35 +1918,44 @@ static struct clk_lookup lookups[] = {
 
 int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)
 {
-	u32 val = readl_relaxed(CLPCR);
+	u32 clpcr = readl_relaxed(CLPCR);
+	u32 ccr = readl_relaxed(CCR);
 
-	val &= ~BM_CLPCR_LPM;
+	clpcr &= ~(BM_CLPCR_LPM | BM_CLPCR_VSTBY | BM_CLPCR_SBYOS
+			| BM_CLPCR_STBY_COUNT | BM_CLPCR_WB_PER_AT_LPM);
+	ccr &= ~(BM_CCR_RBC_EN);
 	switch (mode) {
 	case WAIT_CLOCKED:
 		break;
 	case WAIT_UNCLOCKED:
-		val |= 0x1 << BP_CLPCR_LPM;
+		clpcr |= 0x1 << BP_CLPCR_LPM;
 		break;
 	case STOP_POWER_ON:
-		val |= 0x2 << BP_CLPCR_LPM;
+		clpcr |= 0x2 << BP_CLPCR_LPM;
 		break;
 	case WAIT_UNCLOCKED_POWER_OFF:
-		val |= 0x1 << BP_CLPCR_LPM;
-		val &= ~BM_CLPCR_VSTBY;
-		val &= ~BM_CLPCR_SBYOS;
-		val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
+		clpcr |= 0x1 << BP_CLPCR_LPM;
 		break;
 	case STOP_POWER_OFF:
-		val |= 0x2 << BP_CLPCR_LPM;
-		val |= 0x3 << BP_CLPCR_STBY_COUNT;
-		val |= BM_CLPCR_VSTBY;
-		val |= BM_CLPCR_SBYOS;
-		val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
+		clpcr |= 0x2 << BP_CLPCR_LPM;
+		clpcr |= 0x3 << BP_CLPCR_STBY_COUNT;
+		clpcr |= BM_CLPCR_VSTBY;
+		clpcr |= BM_CLPCR_SBYOS;
 		break;
+	case ARM_POWER_OFF:
+		clpcr |= 0x2 << BP_CLPCR_LPM;
+		clpcr |= 0x3 << BP_CLPCR_STBY_COUNT;
+		clpcr |= BM_CLPCR_VSTBY;
+		clpcr |= BM_CLPCR_SBYOS;
+		clpcr |= BM_CLPCR_WB_PER_AT_LPM;
+		/* assert anatop_reg_bypass signal */
+		ccr |= BM_CCR_RBC_EN;
+ 		break;
 	default:
 		return -EINVAL;
 	}
-	writel_relaxed(val, CLPCR);
+	writel_relaxed(clpcr, CLPCR);
+	writel_relaxed(ccr, CCR);
 
 	return 0;
 }

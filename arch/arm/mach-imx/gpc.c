@@ -17,14 +17,35 @@
 #include <linux/of_irq.h>
 #include <asm/hardware/gic.h>
 
+#define GPC_CNTR		0x000
 #define GPC_IMR1		0x008
+#define GPC_ISR1		0x018
+#define GPC_ISR2		0x01c
+#define GPC_ISR3		0x020
+#define GPC_ISR4		0x024
 #define GPC_PGC_CPU_PDN		0x2a0
 
 #define IMR_NUM			4
+#define ISR_NUM			4
 
 static void __iomem *gpc_base;
 static u32 gpc_wake_irqs[IMR_NUM];
 static u32 gpc_saved_imrs[IMR_NUM];
+
+bool imx_gpc_wake_irq_pending(void)
+{
+	void __iomem *reg_isr1 = gpc_base + GPC_ISR1;
+	int i;
+	u32 val;
+
+	for (i = 0; i < ISR_NUM; i++) {
+		val = readl_relaxed(reg_isr1 + i * 4);
+		if (val & gpc_wake_irqs[i])
+			return true;
+	}
+
+	return false;
+}
 
 void imx_gpc_pre_suspend(void)
 {
