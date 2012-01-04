@@ -23,6 +23,14 @@
 
 	soc {
 		aips-bus@02000000 { /* AIPS1 */
+			spba-bus@02000000 {
+				ssi@0202c000 { /* SSI2 */
+					status = "okay";
+					fsl,ssi-uses-dma;
+					fsl,ssi-synchronous-mode;
+				};
+			};
+
 			ldb@020e0000 {
 				disp-pwr-gpios = <&gpio1 0 0>; /* gpio2 0 */
 				mode = "sin0";
@@ -54,8 +62,24 @@
 				status = "okay";
 			};
 
+			audmux@021d8000 {
+				status = "okay";
+			};
+
 			uart2: uart@021e8000 {
 				status = "okay";
+			};
+
+			i2c@021a0000 { /* I2C1 */
+				status = "okay";
+				clock-frequency = <100000>;
+
+				codec: sgtl5000@0a {
+					compatible = "fsl,sgtl5000";
+					reg = <0x0a>;
+					VDDA-supply = <&reg_2P5V>;
+					VDDIO-supply = <&reg_3P3V>;
+				};
 			};
 
 			i2c@021a4000 { /* I2C2 */
@@ -138,6 +162,26 @@
 
 		v4l2-out@0 {
 			compatible = "fsl,vout_ipuv3";
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+
+		reg_2P5V: regulator-2P5V {
+			compatible = "regulator-fixed";
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+			regulator-always-on;
+		};
+
+		reg_3P3V: regulator-3P3V {
+			compatible = "regulator-fixed";
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
 		};
 	};
 };
