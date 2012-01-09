@@ -31,6 +31,7 @@
 #include <mach/iomux-mx6q.h>
 #include <mach/ipu-v3.h>
 #include <mach/mxc_vpu.h>
+#include "devices-imx6q.h"
 
 static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	/* DISPLAY */
@@ -122,6 +123,7 @@ static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
+	OF_DEV_AUXDATA("fsl,imx6q-ahci", MX6Q_SATA_BASE_ADDR, "imx6q-ahci", &imx_sata_pdata),
 };
 
 static void __init imx6q_init_machine(void)

@@ -24,6 +24,23 @@
 #include <mach/common.h>
 #include <mach/hardware.h>
 
+/* IOMUXC */
+#define MXC_IOMUXC_BASE		IMX_IO_ADDRESS(MX6Q_IOMUXC_BASE_ADDR)
+#define IOMUXC_GPR0		(MXC_IOMUXC_BASE + 0x00)
+#define IOMUXC_GPR1		(MXC_IOMUXC_BASE + 0x04)
+#define IOMUXC_GPR2		(MXC_IOMUXC_BASE + 0x08)
+#define IOMUXC_GPR3		(MXC_IOMUXC_BASE + 0x0C)
+#define IOMUXC_GPR4		(MXC_IOMUXC_BASE + 0x10)
+#define IOMUXC_GPR5		(MXC_IOMUXC_BASE + 0x14)
+#define IOMUXC_GPR6		(MXC_IOMUXC_BASE + 0x18)
+#define IOMUXC_GPR7		(MXC_IOMUXC_BASE + 0x1C)
+#define IOMUXC_GPR8		(MXC_IOMUXC_BASE + 0x20)
+#define IOMUXC_GPR9		(MXC_IOMUXC_BASE + 0x24)
+#define IOMUXC_GPR10		(MXC_IOMUXC_BASE + 0x28)
+#define IOMUXC_GPR11		(MXC_IOMUXC_BASE + 0x2C)
+#define IOMUXC_GPR12		(MXC_IOMUXC_BASE + 0x30)
+#define IOMUXC_GPR13		(MXC_IOMUXC_BASE + 0x34)
+
 #define PLL_BASE		IMX_IO_ADDRESS(MX6Q_ANATOP_BASE_ADDR)
 #define PLL1_SYS		(PLL_BASE + 0x000)
 #define PLL2_BUS		(PLL_BASE + 0x030)
@@ -1856,7 +1873,26 @@ static struct clk pcie_clk = {
 
 static int sata_clk_enable(struct clk *clk)
 {
+	int timeout = 0x100000;
 	u32 val;
+
+	/* Clear Power Down and Enable PLLs */
+	val = readl_relaxed(PLL8_ENET);
+	val &= ~BM_PLL_POWER_DOWN;
+	writel_relaxed(val, PLL8_ENET);
+
+	val = readl_relaxed(PLL8_ENET);
+	val |= BM_PLL_ENABLE;
+	writel_relaxed(val, PLL8_ENET);
+
+	/* Wait for PLL to lock */
+	while (!(readl_relaxed(PLL8_ENET) & BM_PLL_LOCK) && --timeout)
+		cpu_relax();
+
+	/* Disable the bypass */
+	val = readl_relaxed(PLL8_ENET);
+	val &= ~BM_PLL_BYPASS;
+	writel_relaxed(val, PLL8_ENET);
 
 	val = readl_relaxed(PLL8_ENET);
 	val |= BM_PLL_ENET_EN_SATA;
@@ -1876,14 +1912,62 @@ static void sata_clk_disable(struct clk *clk)
 	writel_relaxed(val, PLL8_ENET);
 }
 
-static struct clk sata_clk = {
-	__INIT_CLK_DEBUG(sata_clk)
-	.enable_reg = CCGR5,
-	.enable_shift = CG2,
-	.enable = sata_clk_enable,
-	.disable = sata_clk_disable,
-	.parent = &ipg_clk,
-	.secondary = &pll8_enet,
+static struct clk sata_clk[] = {
+	{
+		__INIT_CLK_DEBUG(sata_clk)
+		.enable_reg = CCGR5,
+		.enable_shift = CG2,
+		.enable = sata_clk_enable,
+		.disable = sata_clk_disable,
+		.parent = &ipg_clk,
+		.secondary = &sata_clk[1],
+	},
+	{
+		.parent = &mmdc_ch0_axi_clk,
+	},
+};
+
+static int ahci_phy_clk_enable(struct clk *clk)
+{
+	u32 val;
+
+	/* Set PHY Paremeters, two steps to configure the GPR13,
+	 * one write for rest of parameters, mask of first write is 0x07FFFFFD,
+	 * and the other one write for setting the mpll_clk_off_b
+	 *.rx_eq_val_0(iomuxc_gpr13[26:24]),
+	 *.los_lvl(iomuxc_gpr13[23:19]),
+	 *.rx_dpll_mode_0(iomuxc_gpr13[18:16]),
+	 *.mpll_ss_en(iomuxc_gpr13[14]),
+	 *.tx_atten_0(iomuxc_gpr13[13:11]),
+	 *.tx_boost_0(iomuxc_gpr13[10:7]),
+	 *.tx_lvl(iomuxc_gpr13[6:2]),
+	 *.mpll_ck_off(iomuxc_gpr13[1]),
+	 *.tx_edgerate_0(iomuxc_gpr13[0]),
+	 */
+	val = readl_relaxed(IOMUXC_GPR13);
+	writel_relaxed(((val & ~0x07FFFFFD) | 0x0593A044), IOMUXC_GPR13);
+
+	/* enable SATA_PHY PLL */
+	val = readl_relaxed(IOMUXC_GPR13);
+	writel_relaxed(((val & ~0x2) | 0x2), IOMUXC_GPR13);
+
+
+	return 0;
+}
+
+static void ahci_phy_clk_disable(struct clk *clk)
+{
+	/* disable SATA_PHY PLL */
+	writel_relaxed((readl_relaxed(IOMUXC_GPR13) & ~0x2), IOMUXC_GPR13);
+}
+
+static struct clk ahci_phy_clk = {
+	.enable = ahci_phy_clk_enable,
+	.disable = ahci_phy_clk_disable,
+};
+
+static struct clk ahci_dma_clk = {
+	.parent = &ahb_clk,
 };
 
 #define _REGISTER_CLOCK(d, n, c) \
@@ -1931,7 +2015,10 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("208c000.pwm", NULL, pwm4_clk),
 	_REGISTER_CLOCK(NULL, "gpmi_io_clk", gpmi_io_clk),
 	_REGISTER_CLOCK(NULL, "usboh3_clk", usboh3_clk),
-	_REGISTER_CLOCK(NULL, "sata_clk", sata_clk),
+	_REGISTER_CLOCK("imx6q-ahci", "ahci", sata_clk[0]),
+	_REGISTER_CLOCK("imx6q-ahci", "ahci_phy", ahci_phy_clk),
+	_REGISTER_CLOCK("imx6q-ahci", "ahci_dma", ahci_dma_clk),
+	_REGISTER_CLOCK(NULL, "cpu", arm_clk),
 	_REGISTER_CLOCK(NULL, "ipu1_clk", ipu1_clk),
 	_REGISTER_CLOCK(NULL, "ipu2_clk", ipu2_clk),
 	_REGISTER_CLOCK(NULL, "ipu1_di0_clk", ipu1_di0_clk),

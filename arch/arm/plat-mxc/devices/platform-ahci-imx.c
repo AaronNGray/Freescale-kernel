@@ -21,6 +21,7 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
 #include <asm/sizes.h>
@@ -42,8 +43,12 @@ const struct imx_ahci_imx_data imx53_ahci_imx_data __initconst =
 enum {
 	HOST_CAP = 0x00,
 	HOST_CAP_SSS = (1 << 27), /* Staggered Spin-up */
-	HOST_PORTS_IMPL	= 0x0c,
-	HOST_TIMER1MS = 0xe0, /* Timer 1-ms */
+	HOST_PORTS_IMPL	= 0x0C,
+	HOST_TIMER1MS = 0xE0, /* Timer 1-ms */
+
+	PORT_SATA_SR = 0x128, /*  Port0 PHY Control */
+	PORT_PHY_CTL = 0x178, /*  Port0 PHY Control */
+	PORT_PHY_CTL_PDDQ_LOC = 0x100000,
 };
 
 static struct clk *sata_clk, *sata_ref_clk;
@@ -52,7 +57,7 @@ static struct clk *sata_clk, *sata_ref_clk;
 static int imx_sata_init(struct device *dev, void __iomem *addr)
 {
 	u32 tmpdata;
-	int ret = 0;
+	int ret = 0, iterations = 200;
 	struct clk *clk;
 
 	sata_clk = clk_get(dev, "ahci");
@@ -100,6 +105,23 @@ static int imx_sata_init(struct device *dev, void __iomem *addr)
 	if (!(readl(addr + HOST_PORTS_IMPL) & 0x1))
 		writel((readl(addr + HOST_PORTS_IMPL) | 0x1),
 			addr + HOST_PORTS_IMPL);
+	/* Release resources when there is no device on the port */
+	do {
+		if ((readl(addr + PORT_SATA_SR) & 0xF) == 0)
+			usleep_range(2000, 3000);
+		else
+			break;
+
+		if (iterations == 0) {
+			/*  Enter into PDDQ mode, save power */
+			pr_info("No sata disk, enter into PDDQ mode.\n");
+			tmpdata = readl(addr + PORT_PHY_CTL);
+			writel(tmpdata | PORT_PHY_CTL_PDDQ_LOC,
+					addr + PORT_PHY_CTL);
+			ret = -ENODEV;
+			goto release_sata_ref_clk;
+		}
+	} while (iterations-- > 0);
 
 	return 0;
 
@@ -145,12 +167,14 @@ struct platform_device *__init imx_add_ahci_imx(
 			pdata, sizeof(*pdata),  DMA_BIT_MASK(32));
 }
 
+struct ahci_platform_data imx_sata_pdata = {
+	.init = imx_sata_init,
+	.exit = imx_sata_exit,
+};
+
+#ifdef CONFIG_SOC_IMX53
 struct platform_device *__init imx53_add_ahci_imx(void)
 {
-	struct ahci_platform_data pdata = {
-		.init = imx_sata_init,
-		.exit = imx_sata_exit,
-	};
-
 	return imx_add_ahci_imx(&imx53_ahci_imx_data, &pdata);
 }
+#endif
