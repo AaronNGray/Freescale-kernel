@@ -151,7 +151,7 @@ static int mxs_viim_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id mxs_viim_dt_ids[] = {
-	{ .compatible = "fsl,imx6q-ocotp", },
+	{ .compatible = "fsl,imx6q-viim", },
 	{ /* sentinel */ }
 };
 

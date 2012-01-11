@@ -23,6 +23,7 @@
 
 static u32 otp_voltage_saved;
 struct regulator *regu;
+static struct clk *otp_clk;
 
 static int otp_wait_busy(u32 flags);
 
@@ -238,7 +239,7 @@ static void unmap_ocotp_addr(void)
 	otp_base = NULL;
 }
 
-#elif defined(CONFIG_ARCH_MX6) /* IMX6 below ============================= */
+#elif defined(CONFIG_SOC_IMX6Q) /* IMX6 below ============================= */
 
 #include <mach/hardware.h>
 #include <linux/ioport.h>
@@ -257,21 +258,11 @@ static void *otp_base;
 
 static int set_otp_timing(struct mxc_otp_platform_data *otp_data)
 {
-	struct clk *ocotp_clk;
 	unsigned long clk_rate = 0;
 	unsigned long strobe_read, relex, strobe_prog;
 	u32 timing = 0;
 
-	/* [1] get the clock. It needs the IPG clock,though doc writes IPG.*/
-	if (!otp_data->clock_name)
-		return -1;
-
-	ocotp_clk = clk_get(NULL, otp_data->clock_name);
-	if (IS_ERR(ocotp_clk)) {
-		log("we can not find the clock");
-		return -1;
-	}
-	clk_rate = clk_get_rate(ocotp_clk);
+	clk_rate = clk_get_rate(otp_clk);
 
 	/* do optimization for too many zeros */
 	relex = clk_rate / (1000000000 / DEF_RELEX) - 1;
@@ -299,6 +290,7 @@ static int otp_read_prepare(struct mxc_otp_platform_data *otp_data)
 
 	return ret;
 }
+
 static int otp_read_post(struct mxc_otp_platform_data *otp_data)
 {
 	return 0;
@@ -330,6 +322,7 @@ static int otp_write_prepare(struct mxc_otp_platform_data *otp_data)
 
 	return ret;
 }
+
 static int otp_write_post(struct mxc_otp_platform_data *otp_data)
 {
 	/* restore the clock and voltage */
@@ -364,6 +357,6 @@ static void unmap_ocotp_addr(void)
 	iounmap(otp_base);
 	otp_base = NULL;
 }
-#endif /* CONFIG_ARCH_MX6 */
+#endif /* CONFIG_SOC_IMX6Q */
 
 #endif

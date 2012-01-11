@@ -106,7 +106,6 @@ struct fsl_usb2_platform_data {
 struct mxc_otp_platform_data {
 	char		**fuse_name;
 	char		*regulator_name;
-	char		*clock_name;
 	unsigned int	min_volt;
 	unsigned int	max_volt;
 	unsigned int	fuse_num;
