@@ -38,6 +38,8 @@ static int mx5_suspend_enter(suspend_state_t state)
 		return -EINVAL;
 	}
 
+	if (tzic_enable_wake(0) != 0)
+		return -EAGAIN;
 	if (state == PM_SUSPEND_MEM) {
 		local_flush_tlb_all();
 		flush_cache_all();
@@ -47,6 +49,10 @@ static int mx5_suspend_enter(suspend_state_t state)
 		__raw_writel(0, MXC_SRPG_EMPGC1_SRPGCR);
 	}
 	cpu_do_idle();
+
+	__raw_writel(0, MXC_CORTEXA8_PLAT_LPC);
+	clk_disable(gpc_dvfs_clk);
+
 	return 0;
 }
 
@@ -73,8 +79,9 @@ static int __init mx5_pm_init(void)
 		gpc_dvfs_clk = clk_get(NULL, "gpc_dvfs");
 
 	if (!IS_ERR(gpc_dvfs_clk)) {
-		if (cpu_is_mx51())
+		if (cpu_is_mx51() || cpu_is_mx53()) {
 			suspend_set_ops(&mx5_suspend_ops);
+		}
 	} else
 		return -EPERM;
 

@@ -69,3 +69,23 @@ extern const struct imx_imx_keypad_data imx51_imx_keypad_data;
 extern const struct imx_pata_imx_data imx51_pata_imx_data;
 #define imx51_add_pata_imx() \
 	imx_add_pata_imx(&imx51_pata_imx_data)
+
+extern const struct imx_ipuv3_data imx51_ipuv3_data __initconst;
+#define imx51_add_ipuv3(id, pdata)	imx_add_ipuv3(id, &imx51_ipuv3_data, pdata)
+#define imx51_add_ipuv3fb(id, pdata)	imx_add_ipuv3_fb(id, pdata)
+
+extern const struct imx_tve_data imx51_tve_data __initconst;
+#define imx51_add_tve(pdata)	\
+	imx_add_tve(&imx51_tve_data, pdata)
+
+#define imx51_add_v4l2_output(id)	\
+	platform_device_register_resndata(NULL, "mxc_v4l2_output",\
+			id, NULL, 0, NULL, 0);
+
+extern const struct imx_spdif_data imx51_imx_spdif_data __initconst;
+#define imx51_add_spdif(pdata)	imx_add_spdif(&imx51_imx_spdif_data, pdata)
+
+extern const struct imx_spdif_dai_data imx51_spdif_dai_data __initconst;
+#define imx51_add_spdif_dai()	imx_add_spdif_dai(&imx51_spdif_dai_data)
+
+#define imx51_add_spdif_audio_device(pdata)	imx_add_spdif_audio_device()
