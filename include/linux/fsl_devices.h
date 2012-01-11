@@ -103,6 +103,15 @@ struct fsl_usb2_platform_data {
 
 #define FLS_USB2_WORKAROUND_ENGCM09152	(1 << 0)
 
+struct mxc_otp_platform_data {
+	char		**fuse_name;
+	char		*regulator_name;
+	char		*clock_name;
+	unsigned int	min_volt;
+	unsigned int	max_volt;
+	unsigned int	fuse_num;
+};
+
 struct spi_device;
 
 struct fsl_spi_platform_data {
