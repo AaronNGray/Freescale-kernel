@@ -1183,6 +1183,9 @@ static struct regulator_dev *regulator_dev_lookup(struct device *dev,
 	struct regulator_dev *r;
 	struct device_node *node;
 
+	if (supply == NULL)
+		return NULL;
+
 	/* first do a dt based lookup */
 	if (dev && dev->of_node) {
 		node = of_get_regulator(dev, supply);

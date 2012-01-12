@@ -540,6 +540,7 @@ static int ldb_disp_init(struct mxc_dispdrv_handle *disp,
 	}
 
 	if (!plat_data) {
+		memset(&of_data, 0, sizeof(of_data));
 		plat_data = &of_data;
 		if (of_get_ldb_data(ldb, plat_data) < 0) {
 			dev_err(&ldb->pdev->dev, "no platform data\n");
