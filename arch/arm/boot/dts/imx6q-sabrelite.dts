@@ -110,6 +110,10 @@
 			ipu = <0>;
 			di = <0>;
 		};
+
+		ahci@0x02200000 { /* AHCI SATA */
+			status = "okay";
+		};
 	};
 
 	leds {

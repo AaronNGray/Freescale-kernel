@@ -49,4 +49,9 @@
 #define MX6Q_IPU1_BASE_ADDR         	0x02400000
 #define MX6Q_IPU2_BASE_ADDR         	0x02800000
 
+/*
+ * AHCI SATA
+ */
+#define MX6Q_SATA_BASE_ADDR		0x02200000
+
 #endif	/* __MACH_MX6Q_H__ */
