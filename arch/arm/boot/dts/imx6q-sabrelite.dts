@@ -29,6 +29,18 @@
 					fsl,ssi-uses-dma;
 					fsl,ssi-synchronous-mode;
 				};
+
+				ecspi@02008000 { /* eCSPI1 */
+					fsl,spi-num-chipselects = <1>;
+					cs-gpios = <&gpio3 19 0>;
+					status = "okay";
+
+					flash: m25p32@0 {
+						compatible = "st,m25p32", "st,m25p";
+						spi-max-frequency = <20000000>;
+						reg = <0>;
+					};
+				};
 			};
 
 			ldb@020e0000 {
