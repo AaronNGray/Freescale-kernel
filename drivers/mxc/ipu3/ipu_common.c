@@ -910,7 +910,7 @@ void ipu_uninit_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 	_ipu_lock(ipu);
 
 	if ((ipu->channel_init_mask & (1L << IPU_CHAN_ID(channel))) == 0) {
-		dev_err(ipu->dev, "Channel already uninitialized %d\n",
+		dev_warn(ipu->dev, "Channel already uninitialized %d\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
 		return;
@@ -923,7 +923,7 @@ void ipu_uninit_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 
 	if (idma_is_set(ipu, IDMAC_CHA_EN, in_dma) ||
 	    idma_is_set(ipu, IDMAC_CHA_EN, out_dma)) {
-		dev_err(ipu->dev,
+		dev_warn(ipu->dev,
 			"Channel %d is not disabled, disable first\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
@@ -1943,7 +1943,7 @@ int32_t ipu_enable_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 	_ipu_lock(ipu);
 
 	if (ipu->channel_enable_mask & (1L << IPU_CHAN_ID(channel))) {
-		dev_err(ipu->dev, "Warning: channel already enabled %d\n",
+		dev_warn(ipu->dev, "Warning: channel already enabled %d\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
 		return -EACCES;
@@ -2134,7 +2134,7 @@ int32_t ipu_disable_channel(struct ipu_soc *ipu, ipu_channel_t channel, bool wai
 	_ipu_lock(ipu);
 
 	if ((ipu->channel_enable_mask & (1L << IPU_CHAN_ID(channel))) == 0) {
-		dev_err(ipu->dev, "Channel already disabled %d\n",
+		dev_warn(ipu->dev, "Channel already disabled %d\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
 		return -EACCES;
@@ -2182,7 +2182,7 @@ int32_t ipu_disable_channel(struct ipu_soc *ipu, ipu_channel_t channel, bool wai
 				msleep(10);
 				timeout -= 10;
 				if (timeout <= 0) {
-					dev_err(ipu->dev, "warning: wait for bg sync eof timeout\n");
+					dev_warn(ipu->dev, "warning: wait for bg sync eof timeout\n");
 					break;
 				}
 			}
