@@ -1,6 +1,7 @@
-linux-linaro-lt-mx6 (3.2.0-1000.7) UNRELEASED; urgency=low
+linux-linaro-lt-mx6 (3.2.0-1000.7) oneiric; urgency=low
 
   * Rebased to lt-3.2-imx6-20120112
+  * Update configs - sync with lt-mx6_defconfig in lt-3.2-imx6-20120112
 
  -- Eric Miao <eric.miao@linaro.org>  Thu, 12 Jan 2012 16:48:07 +0800
 
