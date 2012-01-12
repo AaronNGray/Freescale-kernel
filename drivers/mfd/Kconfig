@@ -809,6 +809,14 @@ config MFD_INTEL_MSIC
 	  Passage) chip. This chip embeds audio, battery, GPIO, etc.
 	  devices used in Intel Medfield platforms.
 
+config MFD_ANATOP
+	bool "Support for Freescale i.MX on-chip ANATOP controller"
+	depends on SOC_IMX6Q
+	help
+	  Select this option to enable Freescale i.MX on-chip ANATOP
+	  MFD controller. This controller embeds regulator and
+	  thermal devices for Freescale i.MX platforms.
+
 config MFD_MXC_HDMI
 	tristate "MXC HDMI Core"
 	depends on MXC_IPU
