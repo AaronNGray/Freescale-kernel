@@ -1918,6 +1918,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "gpu3d_clk", gpu3d_core_clk),
 	_REGISTER_CLOCK(NULL, "gpu2d_clk", gpu2d_core_clk),
 	_REGISTER_CLOCK(NULL, "gpu3d_shader_clk", gpu3d_shader_clk),
+	_REGISTER_CLOCK(NULL, "ocotp_clk", iim_clk),
 };
 
 int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode)

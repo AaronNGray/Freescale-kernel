@@ -366,6 +366,7 @@
 			};
 
 			snvs@020cc000 {
+				compatible = "fsl,snvs";
 				reg = <0x020cc000 0x4000>;
 				interrupts = <0 19 0x04 0 20 0x04>;
 			};
@@ -516,11 +517,15 @@
 			};
 
 			ocotp@021bc000 {
-				reg = <0x021bc000 0x4000>;
+				compatible = "fsl,imx6q-ocotp";
+				reg = <0x021bc000 0x8000>;
+				interrupts = <0 21 0x04>;
 			};
 
-			ocotp@021c0000 {
-				reg = <0x021c0000 0x4000>;
+			viim@021bc000 {
+				compatible = "fsl,imx6q-viim";
+				reg = <0x021bc000 0x4000>,
+				      <0x021c0000 0x4000>;
 				interrupts = <0 21 0x04>;
 			};
 
