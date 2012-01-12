@@ -38,7 +38,6 @@
 #include <linux/uaccess.h>
 #include <asm/atomic.h>
 #include <mach/hardware.h>
-#include <mach/ipu-v3.h>
 #include "mxc_dispdrv.h"
 
 #define TVE_ENABLE			(1UL)
@@ -121,8 +120,8 @@ struct tve_data {
 	struct delayed_work cd_work;
 	struct tve_reg_mapping *regs;
 	struct tve_reg_fields_mapping *reg_fields;
-	struct mxc_dispdrv_entry *disp_tve;
-	struct mxc_dispdrv_entry *disp_vga;
+	struct mxc_dispdrv_handle *disp_tve;
+	struct mxc_dispdrv_handle *disp_vga;
 	struct notifier_block nb;
 };
 
@@ -935,6 +934,15 @@ int tve_fb_setup(struct tve_data *tve, struct fb_info *fbi)
 	return 0;
 }
 
+static inline int tve_disp_setup(struct mxc_dispdrv_handle *disp,
+	struct fb_info *fbi)
+{
+	struct tve_data *tve = mxc_dispdrv_getdata(disp);
+
+	tve_fb_setup(tve, fbi);
+	return 0;
+}
+
 int tve_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 {
 	struct tve_data *tve = container_of(nb, struct tve_data, nb);
@@ -946,11 +954,6 @@ int tve_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 		return 0;
 
 	switch (val) {
-	case FB_EVENT_PREMODE_CHANGE:
-	{
-		tve_fb_setup(tve, fbi);
-		break;
-	}
 	case FB_EVENT_BLANK:
 		if (fbi->mode == NULL)
 			return 0;
@@ -1029,11 +1032,11 @@ static int _tve_get_revision(struct tve_data *tve)
 	return rev;
 }
 
-static int tve_drv_init(struct mxc_dispdrv_entry *disp, bool vga)
+static int tve_drv_init(struct mxc_dispdrv_handle *disp, bool vga,
+	struct mxc_dispdrv_setting *setting)
 {
 	int ret;
 	struct tve_data *tve = mxc_dispdrv_getdata(disp);
-	struct mxc_dispdrv_setting *setting = mxc_dispdrv_getsetting(disp);
 	struct fsl_mxc_tve_platform_data *plat_data
 			= tve->pdev->dev.platform_data;
 	struct resource *res;
@@ -1103,6 +1106,18 @@ static int tve_drv_init(struct mxc_dispdrv_entry *disp, bool vga)
 	} else {
 		tve->regs = &tve_regs_v2;
 		tve->reg_fields = &tve_reg_fields_v2;
+	}
+
+	/* adjust video mode for mx37 */
+	if (cpu_is_mx37()) {
+		video_modes_tve[0].left_margin = 121;
+		video_modes_tve[0].right_margin = 16;
+		video_modes_tve[0].upper_margin = 17;
+		video_modes_tve[0].lower_margin = 5;
+		video_modes_tve[1].left_margin = 131;
+		video_modes_tve[1].right_margin = 12;
+		video_modes_tve[1].upper_margin = 21;
+		video_modes_tve[1].lower_margin = 3;
 	}
 
 	if (vga && cpu_is_mx53()) {
@@ -1179,17 +1194,19 @@ get_res_failed:
 
 }
 
-static int tvout_init(struct mxc_dispdrv_entry *disp)
+static int tvout_init(struct mxc_dispdrv_handle *disp,
+	struct mxc_dispdrv_setting *setting)
 {
-	return tve_drv_init(disp, 0);
+	return tve_drv_init(disp, 0, setting);
 }
 
-static int vga_init(struct mxc_dispdrv_entry *disp)
+static int vga_init(struct mxc_dispdrv_handle *disp,
+	struct mxc_dispdrv_setting *setting)
 {
-	return tve_drv_init(disp, 1);
+	return tve_drv_init(disp, 1, setting);
 }
 
-void tvout_deinit(struct mxc_dispdrv_entry *disp)
+void tvout_deinit(struct mxc_dispdrv_handle *disp)
 {
 	struct tve_data *tve = mxc_dispdrv_getdata(disp);
 
@@ -1212,6 +1229,7 @@ static struct mxc_dispdrv_driver vga_drv = {
 	.name 	= DISPDRV_VGA,
 	.init 	= vga_init,
 	.deinit	= tvout_deinit,
+	.setup = tve_disp_setup,
 };
 
 static int tve_dispdrv_init(struct tve_data *tve)
@@ -1225,6 +1243,8 @@ static int tve_dispdrv_init(struct tve_data *tve)
 
 static void tve_dispdrv_deinit(struct tve_data *tve)
 {
+	mxc_dispdrv_puthandle(tve->disp_tve);
+	mxc_dispdrv_puthandle(tve->disp_vga);
 	mxc_dispdrv_unregister(tve->disp_tve);
 	mxc_dispdrv_unregister(tve->disp_vga);
 }

@@ -23,6 +23,13 @@
 
 	soc {
 		aips-bus@02000000 { /* AIPS1 */
+			ldb@020e0000 {
+				disp-pwr-gpios = <&gpio1 0 0>; /* gpio2 0 */
+				mode = "sin0";
+				ext_ref = "true";
+				lvds0 = <1 0>;
+			};
+
 			wdog@020bc000 { /* WDOG1 */
 				status = "okay";
 			};
@@ -50,6 +57,87 @@
 			uart2: uart@021e8000 {
 				status = "okay";
 			};
+
+			i2c@021a4000 { /* I2C2 */
+				status = "okay";
+				clock-frequency = <100000>;
+
+				ddc: ddc@50 {
+					compatible = "fsl,imx6q-hdmi-ddc";
+					reg = <0x50>;
+				};
+			};
+
+			i2c@021a8000 { /* I2C3 */
+				status = "okay";
+				clock-frequency = <400000>;
+
+				egalax@04 {
+					compatible = "eeti,egalax";
+					reg = <0x04>;
+					interrupt-parent = <&gpio1>;
+					interrupts = <9>;
+					interrupt-gpio = <&gpio1 9 0>;
+				};
+			};
+		};
+
+		hdmi@0x00120000 { /* HDMI */
+			ipu = <0>;
+			di = <0>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		debug-led {
+			label = "Heartbeat";
+			gpios = <&gpio2 25 0>; /* GPIO3_25 */
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	backlight {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "simple-bus";
+
+		pwm_bl {
+			compatible = "pwm-bl";
+			pwm-parent = <&pwm4>;
+			max_brightness = <255>;
+			dft_brightness = <128>;
+			pwm_period_ns = <50000>;
+		};
+	};
+
+	displays {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		disp1: fb@0 {
+			compatible = "fsl,mxcfb-ipuv3";
+			disp_dev = "ldb";
+			interface_pix_fmt = "RGB666";
+			mode_str = "LDB-XGA";
+			internal_clk = "false";
+			reg = <0x00000000 0x0>;	/* reserve fb mem */
+		};
+
+		disp2: fb@1 {
+			compatible = "fsl,mxcfb-ipuv3";
+			disp_dev = "hdmi";
+			interface_pix_fmt = "RGB24";
+			mode_str = "1280x720M@60";
+			internal_clk = "false";
+			reg = <0x00000001 0x0>;	/* reserve fb mem */
+		};
+
+		v4l2-out@0 {
+			compatible = "fsl,vout_ipuv3";
 		};
 	};
 };

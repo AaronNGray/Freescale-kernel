@@ -772,9 +772,10 @@ static int mxc_vidioc_g_fmt_vid_out(struct file *file, void *fh,
 	return 0;
 }
 
-static inline int ipu_try_task(struct ipu_task *task)
+static inline int ipu_try_task(struct mxc_vout_output *vout)
 {
 	int ret;
+	struct ipu_task *task = &vout->task;
 
 again:
 	ret = ipu_check_task(task);
@@ -789,11 +790,19 @@ again:
 				goto again;
 			}
 			if (ret == IPU_CHECK_ERR_SPLIT_OUTPUTW_OVER) {
-				task->output.crop.w -= 8;
+				if (vout->disp_support_windows) {
+					task->output.width -= 8;
+					task->output.crop.w = task->output.width;
+				} else
+					task->output.crop.w -= 8;
 				goto again;
 			}
 			if (ret == IPU_CHECK_ERR_SPLIT_OUTPUTH_OVER) {
-				task->output.crop.h -= 8;
+				if (vout->disp_support_windows) {
+					task->output.height -= 8;
+					task->output.crop.h = task->output.height;
+				} else
+					task->output.crop.h -= 8;
 				goto again;
 			}
 			ret = -EINVAL;
@@ -830,7 +839,7 @@ static int mxc_vout_try_task(struct mxc_vout_output *vout)
 			else
 				vout->task.output.format = IPU_PIX_FMT_RGB565;
 		}
-		ret = ipu_try_task(&vout->task);
+		ret = ipu_try_task(vout);
 	}
 
 	return ret;
@@ -1319,10 +1328,12 @@ static int config_disp_output(struct mxc_vout_output *vout)
 		else
 			var.yres_virtual = var.yres;
 		var.rotate = vout->task.output.rotate;
+		var.vmode |= FB_VMODE_YWRAP;
 	} else {
 		fb_num = FB_BUFS;
 		var.xres_virtual = var.xres;
 		var.yres_virtual = fb_num * var.yres;
+		var.vmode &= ~FB_VMODE_YWRAP;
 	}
 	var.bits_per_pixel = fmt_to_bpp(vout->task.output.format);
 	var.nonstd = vout->task.output.format;
@@ -1575,7 +1586,7 @@ static int __init mxc_vout_setup_output(struct mxc_vout_dev *dev)
 	return ret;
 }
 
-static int __init mxc_vout_probe(struct platform_device *pdev)
+static int mxc_vout_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct mxc_vout_dev *dev;
@@ -1621,9 +1632,15 @@ static int mxc_vout_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxc_vout_dt_ids[] = {
+	{ .compatible = "fsl,vout_ipuv3", },
+	{ /* sentinel */ }
+};
+
 static struct platform_driver mxc_vout_driver = {
 	.driver = {
 		.name = "mxc_v4l2_output",
+		.of_match_table = mxc_vout_dt_ids,
 	},
 	.probe = mxc_vout_probe,
 	.remove = mxc_vout_remove,

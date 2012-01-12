@@ -22,6 +22,7 @@
 #include <linux/of_platform.h>
 #include <linux/phy.h>
 #include <linux/micrel_phy.h>
+#include <linux/dma-mapping.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
@@ -31,6 +32,8 @@
 #include <mach/hardware.h>
 #include <mach/iram.h>
 #include <mach/iomux-mx6q.h>
+#include <mach/ipu-v3.h>
+#include <mach/mxc_vpu.h>
 
 static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	/* DISPLAY */
@@ -67,6 +70,9 @@ static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	/* I2C2 */
 	MX6Q_PAD_KEY_COL3__I2C2_SCL,
 	MX6Q_PAD_KEY_ROW3__I2C2_SDA,
+	/* I2C3 */
+	MX6Q_PAD_GPIO_5__I2C3_SCL,
+	MX6Q_PAD_GPIO_16__I2C3_SDA,
 	/* GPIO */
 	MX6Q_PAD_NANDF_D0__GPIO_2_0,
 	MX6Q_PAD_EIM_D23__GPIO_3_23,
@@ -117,6 +123,40 @@ soft:
 	soft_restart(0);
 }
 
+static int mx6q_ipuv3_init(int id)
+{
+	imx_reset_ipu(id);
+	return 0;
+}
+
+static void mx6q_ipuv3_pg(int enable)
+{
+	/*TODO*/
+}
+
+static struct imx_ipuv3_platform_data ipuv3_pdata = {
+	.rev = 4,
+	.init = mx6q_ipuv3_init,
+	.pg = mx6q_ipuv3_pg,
+};
+
+static void mx6q_vpu_reset(void)
+{
+	imx_reset_vpu();
+}
+
+static struct mxc_vpu_platform_data vpu_pdata = {
+	.iram_enable = true,
+	.iram_size = 0x21000,
+	.reset = mx6q_vpu_reset,
+};
+
+static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
+	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
+};
+
 static void __init imx6q_init_machine(void)
 {
 	if (of_machine_is_compatible("fsl,imx6q-sabrelite")) {
@@ -126,7 +166,8 @@ static void __init imx6q_init_machine(void)
 					ARRAY_SIZE(imx6q_sabrelite_pads));
 	}
 
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+	of_platform_populate(NULL, of_default_bus_match_table,
+					imx6q_auxdata_lookup, NULL);
 
 	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
 
@@ -154,6 +195,11 @@ static void __init imx6q_map_io(void)
 	imx_scu_map_io();
 	imx6q_clock_map_io();
 	imx6q_iomux_map_io();
+
+	init_consistent_dma_size(SZ_64M);
+
+	if (!system_rev)
+		system_rev = 0x63000;
 }
 
 static int __init imx6q_gpio_add_irq_domain(struct device_node *np,

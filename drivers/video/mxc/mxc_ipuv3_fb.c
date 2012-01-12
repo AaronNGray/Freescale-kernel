@@ -77,6 +77,7 @@ struct mxcfb_info {
 	void *alpha_virt_addr1;
 	uint32_t alpha_mem_len;
 	uint32_t ipu_ch_irq;
+	uint32_t ipu_ch_nf_irq;
 	uint32_t ipu_alp_ch_irq;
 	uint32_t cur_ipu_buf;
 	uint32_t cur_ipu_alpha_buf;
@@ -84,13 +85,15 @@ struct mxcfb_info {
 	u32 pseudo_palette[16];
 
 	bool mode_found;
-	volatile bool wait4vsync;
 	struct semaphore flip_sem;
 	struct semaphore alpha_flip_sem;
 	struct completion vsync_complete;
 
 	void *ipu;
 	struct fb_info *ovfbi;
+
+	struct mxc_dispdrv_handle *dispdrv;
+	struct ipuv3_fb_platform_data of_data;
 };
 
 struct mxcfb_alloc_list {
@@ -109,6 +112,7 @@ enum {
 
 static bool g_dp_in_use[2];
 LIST_HEAD(fb_alloc_list);
+static int of_dev_id;
 
 static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 {
@@ -131,6 +135,38 @@ static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 	return pixfmt;
 }
 
+static int if_fmt_parse(const char *fmt)
+{
+	int if_fmt;
+
+	if (!strncmp(fmt, "RGB24", 5))
+		if_fmt = IPU_PIX_FMT_RGB24;
+	else if (!strncmp(fmt, "BGR24", 5))
+		if_fmt = IPU_PIX_FMT_BGR24;
+	else if (!strncmp(fmt, "GBR24", 5))
+		if_fmt = IPU_PIX_FMT_GBR24;
+	else if (!strncmp(fmt, "RGB565", 6))
+		if_fmt = IPU_PIX_FMT_RGB565;
+	else if (!strncmp(fmt, "RGB666", 6))
+		if_fmt = IPU_PIX_FMT_RGB666;
+	else if (!strncmp(fmt, "YUV444", 6))
+		if_fmt = IPU_PIX_FMT_YUV444;
+	else if (!strncmp(fmt, "LVDS666", 7))
+		if_fmt = IPU_PIX_FMT_LVDS666;
+	else if (!strncmp(fmt, "YUYV16", 6))
+		if_fmt = IPU_PIX_FMT_YUYV;
+	else if (!strncmp(fmt, "UYVY16", 6))
+		if_fmt = IPU_PIX_FMT_UYVY;
+	else if (!strncmp(fmt, "YVYU16", 6))
+		if_fmt = IPU_PIX_FMT_YVYU;
+	else if (!strncmp(fmt, "VYUY16", 6))
+		if_fmt = IPU_PIX_FMT_VYUY;
+	else
+		if_fmt = IPU_PIX_FMT_RGB24;
+
+	return if_fmt;
+}
+
 static struct fb_info *found_registered_fb(ipu_channel_t ipu_ch, int ipu_id)
 {
 	int i;
@@ -151,6 +187,7 @@ static struct fb_info *found_registered_fb(ipu_channel_t ipu_ch, int ipu_id)
 }
 
 static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id);
+static irqreturn_t mxcfb_nf_irq_handler(int irq, void *dev_id);
 static int mxcfb_blank(int blank, struct fb_info *info);
 static int mxcfb_map_video_memory(struct fb_info *fbi);
 static int mxcfb_unmap_video_memory(struct fb_info *fbi);
@@ -210,6 +247,7 @@ static int _setup_disp_channel2(struct fb_info *fbi)
 	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
 	int fb_stride;
 	unsigned long base;
+	unsigned int fr_xoff, fr_yoff, fr_w, fr_h;
 
 	switch (bpp_to_pixfmt(fbi)) {
 	case IPU_PIX_FMT_YUV420P2:
@@ -224,16 +262,28 @@ static int _setup_disp_channel2(struct fb_info *fbi)
 		fb_stride = fbi->fix.line_length;
 	}
 
+	base = fbi->fix.smem_start;
+	fr_xoff = fbi->var.xoffset;
+	fr_w = fbi->var.xres_virtual;
+	if (!(fbi->var.vmode & FB_VMODE_YWRAP)) {
+		dev_dbg(fbi->device, "Y wrap disabled\n");
+		fr_yoff = fbi->var.yoffset % fbi->var.yres;
+		fr_h = fbi->var.yres;
+		base += fbi->fix.line_length * fbi->var.yres *
+			(fbi->var.yoffset / fbi->var.yres);
+	} else {
+		dev_dbg(fbi->device, "Y wrap enabled\n");
+		fr_yoff = fbi->var.yoffset;
+		fr_h = fbi->var.yres_virtual;
+	}
+	base += fr_yoff * fb_stride + fr_xoff;
+
 	mxc_fbi->cur_ipu_buf = 2;
 	sema_init(&mxc_fbi->flip_sem, 1);
 	if (mxc_fbi->alpha_chan_en) {
 		mxc_fbi->cur_ipu_alpha_buf = 1;
 		sema_init(&mxc_fbi->alpha_flip_sem, 1);
 	}
-	fbi->var.xoffset = 0;
-
-	base = (fbi->var.yoffset * fb_stride + fbi->var.xoffset);
-	base += fbi->fix.smem_start;
 
 	retval = ipu_init_channel_buffer(mxc_fbi->ipu,
 					 mxc_fbi->ipu_ch, IPU_INPUT_BUFFER,
@@ -250,6 +300,17 @@ static int _setup_disp_channel2(struct fb_info *fbi)
 		dev_err(fbi->device,
 			"ipu_init_channel_buffer error %d\n", retval);
 	}
+
+	/* update u/v offset */
+	ipu_update_channel_offset(mxc_fbi->ipu, mxc_fbi->ipu_ch,
+			IPU_INPUT_BUFFER,
+			bpp_to_pixfmt(fbi),
+			fr_w,
+			fr_h,
+			fr_w,
+			0, 0,
+			fr_yoff,
+			fr_xoff);
 
 	if (mxc_fbi->alpha_chan_en) {
 		retval = ipu_init_channel_buffer(mxc_fbi->ipu,
@@ -287,8 +348,19 @@ static int mxcfb_set_par(struct fb_info *fbi)
 
 	dev_dbg(fbi->device, "Reconfiguring framebuffer\n");
 
+	if (mxc_fbi->dispdrv && mxc_fbi->dispdrv->drv->setup) {
+		retval = mxc_fbi->dispdrv->drv->setup(mxc_fbi->dispdrv, fbi);
+		if (retval < 0) {
+			dev_err(fbi->device, "setup error, dispdrv:%s.\n",
+					mxc_fbi->dispdrv->drv->name);
+			return -EINVAL;
+		}
+	}
+
 	ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
 	ipu_disable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
+	ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_nf_irq);
+	ipu_disable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_nf_irq);
 	ipu_disable_channel(mxc_fbi->ipu, mxc_fbi->ipu_ch, true);
 	ipu_uninit_channel(mxc_fbi->ipu, mxc_fbi->ipu_ch);
 	mxcfb_set_fix(fbi);
@@ -433,6 +505,9 @@ static int _swap_channels(struct fb_info *fbi_from,
 	tmp = mxc_fbi_from->ipu_ch_irq;
 	mxc_fbi_from->ipu_ch_irq = mxc_fbi_to->ipu_ch_irq;
 	mxc_fbi_to->ipu_ch_irq = tmp;
+	tmp = mxc_fbi_from->ipu_ch_nf_irq;
+	mxc_fbi_from->ipu_ch_nf_irq = mxc_fbi_to->ipu_ch_nf_irq;
+	mxc_fbi_to->ipu_ch_nf_irq = tmp;
 	ovfbi = mxc_fbi_from->ovfbi;
 	mxc_fbi_from->ovfbi = mxc_fbi_to->ovfbi;
 	mxc_fbi_to->ovfbi = ovfbi;
@@ -481,6 +556,10 @@ static int swap_channels(struct fb_info *fbi_from)
 	ipu_clear_irq(mxc_fbi_to->ipu, mxc_fbi_to->ipu_ch_irq);
 	ipu_free_irq(mxc_fbi_from->ipu, mxc_fbi_from->ipu_ch_irq, fbi_from);
 	ipu_free_irq(mxc_fbi_to->ipu, mxc_fbi_to->ipu_ch_irq, fbi_to);
+	ipu_clear_irq(mxc_fbi_from->ipu, mxc_fbi_from->ipu_ch_nf_irq);
+	ipu_clear_irq(mxc_fbi_to->ipu, mxc_fbi_to->ipu_ch_nf_irq);
+	ipu_free_irq(mxc_fbi_from->ipu, mxc_fbi_from->ipu_ch_nf_irq, fbi_from);
+	ipu_free_irq(mxc_fbi_to->ipu, mxc_fbi_to->ipu_ch_nf_irq, fbi_to);
 
 	if (mxc_fbi_from->cur_blank == FB_BLANK_UNBLANK) {
 		if (mxc_fbi_to->cur_blank == FB_BLANK_UNBLANK)
@@ -514,6 +593,9 @@ static int swap_channels(struct fb_info *fbi_from)
 		i = mxc_fbi_from->ipu_ch_irq;
 		mxc_fbi_from->ipu_ch_irq = mxc_fbi_to->ipu_ch_irq;
 		mxc_fbi_to->ipu_ch_irq = i;
+		i = mxc_fbi_from->ipu_ch_nf_irq;
+		mxc_fbi_from->ipu_ch_nf_irq = mxc_fbi_to->ipu_ch_nf_irq;
+		mxc_fbi_to->ipu_ch_nf_irq = i;
 		break;
 	default:
 		break;
@@ -533,6 +615,20 @@ static int swap_channels(struct fb_info *fbi_from)
 		return -EBUSY;
 	}
 	ipu_disable_irq(mxc_fbi_to->ipu, mxc_fbi_to->ipu_ch_irq);
+	if (ipu_request_irq(mxc_fbi_from->ipu, mxc_fbi_from->ipu_ch_nf_irq, mxcfb_nf_irq_handler, 0,
+		MXCFB_NAME, fbi_from) != 0) {
+		dev_err(fbi_from->device, "Error registering irq %d\n",
+			mxc_fbi_from->ipu_ch_nf_irq);
+		return -EBUSY;
+	}
+	ipu_disable_irq(mxc_fbi_from->ipu, mxc_fbi_from->ipu_ch_nf_irq);
+	if (ipu_request_irq(mxc_fbi_to->ipu, mxc_fbi_to->ipu_ch_nf_irq, mxcfb_irq_handler, 0,
+		MXCFB_NAME, fbi_to) != 0) {
+		dev_err(fbi_to->device, "Error registering irq %d\n",
+			mxc_fbi_to->ipu_ch_nf_irq);
+		return -EBUSY;
+	}
+	ipu_disable_irq(mxc_fbi_to->ipu, mxc_fbi_to->ipu_ch_nf_irq);
 
 	return 0;
 }
@@ -928,17 +1024,14 @@ static int mxcfb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 			}
 
 			init_completion(&mxc_fbi->vsync_complete);
-
-			ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
-			mxc_fbi->wait4vsync = true;
-			ipu_enable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
+			ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_nf_irq);
+			ipu_enable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_nf_irq);
 			retval = wait_for_completion_interruptible_timeout(
 				&mxc_fbi->vsync_complete, 1 * HZ);
 			if (retval == 0) {
 				dev_err(fbi->device,
 					"MXCFB_WAIT_FOR_VSYNC: timeout %d\n",
 					retval);
-				mxc_fbi->wait4vsync = false;
 				retval = -ETIME;
 			} else if (retval > 0) {
 				retval = 0;
@@ -1155,6 +1248,7 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)info->par,
 			  *mxc_graphic_fbi = NULL;
 	u_int y_bottom;
+	unsigned int fr_xoff, fr_yoff, fr_w, fr_h;
 	unsigned long base, active_alpha_phy_addr = 0;
 	bool loc_alpha_en = false;
 	int fb_stride;
@@ -1181,9 +1275,6 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 
 	y_bottom = var->yoffset;
 
-	if (!(var->vmode & FB_VMODE_YWRAP))
-		y_bottom += var->yres;
-
 	if (y_bottom > info->var.yres_virtual)
 		return -EINVAL;
 
@@ -1200,8 +1291,21 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		fb_stride = info->fix.line_length;
 	}
 
-	base = (var->yoffset * fb_stride + var->xoffset);
-	base += info->fix.smem_start;
+	base = info->fix.smem_start;
+	fr_xoff = var->xoffset;
+	fr_w = info->var.xres_virtual;
+	if (!(var->vmode & FB_VMODE_YWRAP)) {
+		dev_dbg(info->device, "Y wrap disabled\n");
+		fr_yoff = var->yoffset % info->var.yres;
+		fr_h = info->var.yres;
+		base += info->fix.line_length * info->var.yres *
+			(var->yoffset / info->var.yres);
+	} else {
+		dev_dbg(info->device, "Y wrap enabled\n");
+		fr_yoff = var->yoffset;
+		fr_h = info->var.yres_virtual;
+	}
+	base += fr_yoff * fb_stride + fr_xoff;
 
 	/* Check if DP local alpha is enabled and find the graphic fb */
 	if (mxc_fbi->ipu_ch == MEM_BG_SYNC || mxc_fbi->ipu_ch == MEM_FG_SYNC) {
@@ -1233,7 +1337,8 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 
 	down(&mxc_fbi->flip_sem);
 
-	mxc_fbi->cur_ipu_buf = (++mxc_fbi->cur_ipu_buf) % 3;
+	mxc_fbi->cur_ipu_buf++;
+	mxc_fbi->cur_ipu_buf %= 3;
 	mxc_fbi->cur_ipu_alpha_buf = !mxc_fbi->cur_ipu_alpha_buf;
 
 	dev_dbg(info->device, "Updating SDC %s buf %d address=0x%08lX\n",
@@ -1256,12 +1361,12 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		ipu_update_channel_offset(mxc_fbi->ipu, mxc_fbi->ipu_ch,
 				IPU_INPUT_BUFFER,
 				bpp_to_pixfmt(info),
-				info->var.xres_virtual,
-				info->var.yres_virtual,
-				info->var.xres_virtual,
+				fr_w,
+				fr_h,
+				fr_w,
 				0, 0,
-				var->yoffset,
-				var->xoffset);
+				fr_yoff,
+				fr_xoff);
 
 		ipu_select_buffer(mxc_fbi->ipu, mxc_fbi->ipu_ch, IPU_INPUT_BUFFER,
 				  mxc_fbi->cur_ipu_buf);
@@ -1280,8 +1385,10 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 					       IPU_INPUT_BUFFER, 1),
 			ipu_check_buffer_ready(mxc_fbi->ipu, mxc_fbi->ipu_ch,
 					       IPU_INPUT_BUFFER, 2));
-		mxc_fbi->cur_ipu_buf = (++mxc_fbi->cur_ipu_buf) % 3;
-		mxc_fbi->cur_ipu_buf = (++mxc_fbi->cur_ipu_buf) % 3;
+		mxc_fbi->cur_ipu_buf++;
+		mxc_fbi->cur_ipu_buf %= 3;
+		mxc_fbi->cur_ipu_buf++;
+		mxc_fbi->cur_ipu_buf %= 3;
 		mxc_fbi->cur_ipu_alpha_buf = !mxc_fbi->cur_ipu_alpha_buf;
 		ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
 		ipu_enable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
@@ -1373,14 +1480,18 @@ static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id)
 	struct fb_info *fbi = dev_id;
 	struct mxcfb_info *mxc_fbi = fbi->par;
 
-	if (mxc_fbi->wait4vsync) {
-		complete(&mxc_fbi->vsync_complete);
-		ipu_disable_irq(mxc_fbi->ipu, irq);
-		mxc_fbi->wait4vsync = false;
-	} else {
-		up(&mxc_fbi->flip_sem);
-		ipu_disable_irq(mxc_fbi->ipu, irq);
-	}
+	up(&mxc_fbi->flip_sem);
+	ipu_disable_irq(mxc_fbi->ipu, irq);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t mxcfb_nf_irq_handler(int irq, void *dev_id)
+{
+	struct fb_info *fbi = dev_id;
+	struct mxcfb_info *mxc_fbi = fbi->par;
+
+	complete(&mxc_fbi->vsync_complete);
+	ipu_disable_irq(mxc_fbi->ipu, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1628,10 +1739,11 @@ static int mxcfb_dispdrv_init(struct platform_device *pdev,
 
 	dev_info(&pdev->dev, "register mxc display driver %s\n", disp_dev);
 
-	ret = mxc_dispdrv_init(disp_dev, &setting);
-	if (ret < 0) {
-		dev_err(&pdev->dev,
-			"register mxc display driver failed with %d\n", ret);
+	mxcfbi->dispdrv = mxc_dispdrv_gethandle(disp_dev, &setting);
+	if (IS_ERR(mxcfbi->dispdrv)) {
+		ret = PTR_ERR(mxcfbi->dispdrv);
+		dev_err(&pdev->dev, "NO mxc display driver found!\n");
+		return ret;
 	} else {
 		/* fix-up  */
 		mxcfbi->ipu_di_pix_fmt = setting.if_fmt;
@@ -1672,49 +1784,8 @@ static int mxcfb_option_setup(struct platform_device *pdev)
 			continue;
 		}
 		if (!strncmp(opt, "if=", 3)) {
-			if (!strncmp(opt+3, "RGB24", 5)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_RGB24;
-				continue;
-			} else if (!strncmp(opt+6, "BGR24", 5)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_BGR24;
-				continue;
-			}
-			if (!strncmp(opt+3, "GBR24", 5)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_GBR24;
-				continue;
-			}
-			if (!strncmp(opt+3, "RGB565", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_RGB565;
-				continue;
-			}
-			if (!strncmp(opt+3, "RGB666", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_RGB666;
-				continue;
-			}
-			if (!strncmp(opt+3, "YUV444", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_YUV444;
-				continue;
-			}
-			if (!strncmp(opt+3, "LVDS666", 7)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_LVDS666;
-				continue;
-			}
-			if (!strncmp(opt+3, "YUYV16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_YUYV;
-				continue;
-			}
-			if (!strncmp(opt+3, "UYVY16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_UYVY;
-				continue;
-			}
-			if (!strncmp(opt+3, "YVYU16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_YVYU;
-				continue;
-			}
-			if (!strncmp(opt+3, "VYUY16", 6)) {
-				pdata->interface_pix_fmt = IPU_PIX_FMT_VYUY;
-				continue;
-			}
+			pdata->interface_pix_fmt = if_fmt_parse(opt+3);
+			continue;
 		}
 		if (!strncmp(opt, "int_clk", 7)) {
 			pdata->int_clk = true;
@@ -1727,8 +1798,10 @@ static int mxcfb_option_setup(struct platform_device *pdev)
 			fb_mode_str = opt;
 	}
 
-	if (fb_mode_str)
-		pdata->mode_str = fb_mode_str;
+	if (fb_mode_str) {
+		memcpy(pdata->mode_str, fb_mode_str, strlen(fb_mode_str));
+		pdata->mode_str[strlen(fb_mode_str)] = '\0';
+	}
 
 	return 0;
 }
@@ -1755,11 +1828,18 @@ static int mxcfb_register(struct fb_info *fbi)
 
 	if (ipu_request_irq(mxcfbi->ipu, mxcfbi->ipu_ch_irq, mxcfb_irq_handler, 0,
 				MXCFB_NAME, fbi) != 0) {
-		dev_err(fbi->device, "Error registering BG irq handler.\n");
+		dev_err(fbi->device, "Error registering EOF irq handler.\n");
 		ret = -EBUSY;
 		goto err0;
 	}
 	ipu_disable_irq(mxcfbi->ipu, mxcfbi->ipu_ch_irq);
+	if (ipu_request_irq(mxcfbi->ipu, mxcfbi->ipu_ch_nf_irq, mxcfb_nf_irq_handler, 0,
+				MXCFB_NAME, fbi) != 0) {
+		dev_err(fbi->device, "Error registering NFACK irq handler.\n");
+		ret = -EBUSY;
+		goto err1;
+	}
+	ipu_disable_irq(mxcfbi->ipu, mxcfbi->ipu_ch_nf_irq);
 
 	if (mxcfbi->ipu_alp_ch_irq != -1)
 		if (ipu_request_irq(mxcfbi->ipu, mxcfbi->ipu_alp_ch_irq,
@@ -1768,7 +1848,7 @@ static int mxcfb_register(struct fb_info *fbi)
 			dev_err(fbi->device, "Error registering alpha irq "
 					"handler.\n");
 			ret = -EBUSY;
-			goto err1;
+			goto err2;
 		}
 
 	mxcfb_check_var(&fbi->var, fbi);
@@ -1787,8 +1867,6 @@ static int mxcfb_register(struct fb_info *fbi)
 	ret = fb_set_var(fbi, &fbi->var);
 	fbi->flags &= ~FBINFO_MISC_USEREVENT;
 	console_unlock();
-	if (ret < 0)
-		goto err2;
 
 	if (mxcfbi->next_blank == FB_BLANK_UNBLANK) {
 		console_lock();
@@ -1798,12 +1876,14 @@ static int mxcfb_register(struct fb_info *fbi)
 
 	ret = register_framebuffer(fbi);
 	if (ret < 0)
-		goto err2;
+		goto err3;
 
 	return ret;
-err2:
+err3:
 	if (mxcfbi->ipu_alp_ch_irq != -1)
 		ipu_free_irq(mxcfbi->ipu, mxcfbi->ipu_alp_ch_irq, fbi);
+err2:
+	ipu_free_irq(mxcfbi->ipu, mxcfbi->ipu_ch_nf_irq, fbi);
 err1:
 	ipu_free_irq(mxcfbi->ipu, mxcfbi->ipu_ch_irq, fbi);
 err0:
@@ -1818,6 +1898,8 @@ static void mxcfb_unregister(struct fb_info *fbi)
 		ipu_free_irq(mxcfbi->ipu, mxcfbi->ipu_alp_ch_irq, fbi);
 	if (mxcfbi->ipu_ch_irq)
 		ipu_free_irq(mxcfbi->ipu, mxcfbi->ipu_ch_irq, fbi);
+	if (mxcfbi->ipu_ch_nf_irq)
+		ipu_free_irq(mxcfbi->ipu, mxcfbi->ipu_ch_nf_irq, fbi);
 
 	unregister_framebuffer(fbi);
 }
@@ -1844,6 +1926,7 @@ static int mxcfb_setup_overlay(struct platform_device *pdev,
 	}
 	mxcfbi_fg->ipu_id = mxcfbi_bg->ipu_id;
 	mxcfbi_fg->ipu_ch_irq = IPU_IRQ_FG_SYNC_EOF;
+	mxcfbi_fg->ipu_ch_nf_irq = IPU_IRQ_FG_SYNC_NFACK;
 	mxcfbi_fg->ipu_alp_ch_irq = IPU_IRQ_FG_ALPHA_SYNC_EOF;
 	mxcfbi_fg->ipu_ch = MEM_FG_SYNC;
 	mxcfbi_fg->ipu_di = -1;
@@ -1898,6 +1981,54 @@ static void ipu_clear_usage(int ipu, int di)
 	ipu_usage[ipu][di] = false;
 }
 
+static int of_get_fb_data(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct ipuv3_fb_platform_data *plat_data = pdev->dev.platform_data;
+	const char *disp_dev, *if_fmt, *mode_str, *int_clk;
+	const char *default_dev = "lcd";
+	const char *default_mode_str = "800x480M@55";
+	int ret;
+
+	if (!np)
+		return -EINVAL;
+
+	pdev->id = of_dev_id;
+	of_dev_id++;
+
+	plat_data->default_bpp = 16;
+
+	ret = of_property_read_string(np, "disp_dev", &disp_dev);
+	if (ret < 0)
+		memcpy(plat_data->disp_dev, default_dev, strlen(default_dev));
+	else
+		memcpy(plat_data->disp_dev, disp_dev, strlen(disp_dev));
+
+	ret = of_property_read_string(np, "interface_pix_fmt", &if_fmt);
+	if (ret < 0)
+		plat_data->interface_pix_fmt = IPU_PIX_FMT_RGB24;
+	else
+		plat_data->interface_pix_fmt = if_fmt_parse(if_fmt);
+
+	ret = of_property_read_string(np, "mode_str", &mode_str);
+	if (ret < 0)
+		memcpy(plat_data->mode_str, default_mode_str, strlen(default_mode_str));
+	else
+		memcpy(plat_data->mode_str, mode_str, strlen(mode_str));
+
+	ret = of_property_read_string(np, "internal_clk", &int_clk);
+	if (ret < 0)
+		plat_data->int_clk = false;
+	else {
+		if (!strcmp(int_clk, "true"))
+			plat_data->int_clk = true;
+		else
+			plat_data->int_clk = false;
+	}
+
+	return 0;
+}
+
 /*!
  * Probe routine for the framebuffer driver. It is called during the
  * driver binding process.      The following functions are performed in
@@ -1923,9 +2054,18 @@ static int mxcfb_probe(struct platform_device *pdev)
 		goto init_fbinfo_failed;
 	}
 
+	mxcfbi = (struct mxcfb_info *)fbi->par;
+
+	if (!plat_data) {
+		plat_data = pdev->dev.platform_data = &mxcfbi->of_data;
+		if (of_get_fb_data(pdev) < 0) {
+			dev_err(&pdev->dev, "no platform data\n");
+			goto platform_data_err;
+		}
+	}
+
 	mxcfb_option_setup(pdev);
 
-	mxcfbi = (struct mxcfb_info *)fbi->par;
 	mxcfbi->ipu_int_clk = plat_data->int_clk;
 	ret = mxcfb_dispdrv_init(pdev, fbi);
 	if (ret < 0)
@@ -1954,6 +2094,7 @@ static int mxcfb_probe(struct platform_device *pdev)
 	/* first user uses DP with alpha feature */
 	if (!g_dp_in_use[mxcfbi->ipu_id]) {
 		mxcfbi->ipu_ch_irq = IPU_IRQ_BG_SYNC_EOF;
+		mxcfbi->ipu_ch_nf_irq = IPU_IRQ_BG_SYNC_NFACK;
 		mxcfbi->ipu_alp_ch_irq = IPU_IRQ_BG_ALPHA_SYNC_EOF;
 		mxcfbi->ipu_ch = MEM_BG_SYNC;
 		mxcfbi->cur_blank = mxcfbi->next_blank = FB_BLANK_UNBLANK;
@@ -1974,6 +2115,7 @@ static int mxcfb_probe(struct platform_device *pdev)
 		g_dp_in_use[mxcfbi->ipu_id] = true;
 	} else {
 		mxcfbi->ipu_ch_irq = IPU_IRQ_DC_SYNC_EOF;
+		mxcfbi->ipu_ch_nf_irq = IPU_IRQ_DC_SYNC_NFACK;
 		mxcfbi->ipu_alp_ch_irq = -1;
 		mxcfbi->ipu_ch = MEM_DC_SYNC;
 		mxcfbi->cur_blank = mxcfbi->next_blank = FB_BLANK_POWERDOWN;
@@ -2002,6 +2144,7 @@ get_ipu_failed:
 	ipu_clear_usage(mxcfbi->ipu_id, mxcfbi->ipu_di);
 ipu_in_busy:
 init_dispdrv_failed:
+platform_data_err:
 	fb_dealloc_cmap(&fbi->cmap);
 	framebuffer_release(fbi);
 init_fbinfo_failed:
@@ -2033,12 +2176,18 @@ static int mxcfb_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id mxcfb_ipuv3_dt_ids[] = {
+	{ .compatible = "fsl,mxcfb-ipuv3", },
+	{ /* sentinel */ }
+};
+
 /*!
  * This structure contains pointers to the power management callback functions.
  */
 static struct platform_driver mxcfb_driver = {
 	.driver = {
 		   .name = MXCFB_NAME,
+		   .of_match_table = mxcfb_ipuv3_dt_ids,
 		   },
 	.probe = mxcfb_probe,
 	.remove = mxcfb_remove,

@@ -42,6 +42,7 @@
 #include "ipu_param_mem.h"
 
 static struct ipu_soc ipu_array[MXC_IPU_MAX_NUM];
+static int ipu_idx;
 int g_ipu_hw_rev;
 
 /* Static functions */
@@ -381,8 +382,11 @@ static int __devinit ipu_probe(struct platform_device *pdev)
 	unsigned long ipu_base;
 	int ret = 0;
 
-	if (pdev->id >= MXC_IPU_MAX_NUM)
+	if (ipu_idx >= MXC_IPU_MAX_NUM)
 		return -ENODEV;
+
+	pdev->id = ipu_idx;
+	ipu_idx++;
 
 	ipu = &ipu_array[pdev->id];
 	memset(ipu, 0, sizeof(struct ipu_soc));
@@ -391,7 +395,10 @@ static int __devinit ipu_probe(struct platform_device *pdev)
 	mutex_init(&ipu->mutex_lock);
 	atomic_set(&ipu->ipu_use_count, 0);
 
-	g_ipu_hw_rev = plat_data->rev;
+	ret = of_property_read_u32(pdev->dev.of_node,
+				   "revision", &g_ipu_hw_rev);
+	if (ret < 0 && plat_data)
+		g_ipu_hw_rev = plat_data->rev;
 
 	ipu->dev = &pdev->dev;
 
@@ -662,8 +669,10 @@ int32_t ipu_init_channel(struct ipu_soc *ipu, ipu_channel_t channel, ipu_channel
 		if (params->csi_mem.mipi_en) {
 			ipu_conf |= (1 << (IPU_CONF_CSI0_DATA_SOURCE_OFFSET +
 				params->csi_mem.csi));
-			_ipu_smfc_init(ipu, channel, params->csi_mem.mipi_id,
+			_ipu_smfc_init(ipu, channel, params->csi_mem.mipi_vc,
 				params->csi_mem.csi);
+			_ipu_csi_set_mipi_di(ipu, params->csi_mem.mipi_vc,
+				params->csi_mem.mipi_id, params->csi_mem.csi);
 		} else {
 			ipu_conf &= ~(1 << (IPU_CONF_CSI0_DATA_SOURCE_OFFSET +
 				params->csi_mem.csi));
@@ -2316,6 +2325,7 @@ int32_t ipu_enable_csi(struct ipu_soc *ipu, uint32_t csi)
 		return -EINVAL;
 	}
 
+	_ipu_get(ipu);
 	_ipu_lock(ipu);
 	ipu->csi_use_count[csi]++;
 
@@ -2327,6 +2337,7 @@ int32_t ipu_enable_csi(struct ipu_soc *ipu, uint32_t csi)
 			ipu_cm_write(ipu, reg | IPU_CONF_CSI1_EN, IPU_CONF);
 	}
 	_ipu_unlock(ipu);
+	_ipu_put(ipu);
 	return 0;
 }
 EXPORT_SYMBOL(ipu_enable_csi);
@@ -2348,7 +2359,7 @@ int32_t ipu_disable_csi(struct ipu_soc *ipu, uint32_t csi)
 		dev_err(ipu->dev, "Wrong csi num_%d\n", csi);
 		return -EINVAL;
 	}
-
+	_ipu_get(ipu);
 	_ipu_lock(ipu);
 	ipu->csi_use_count[csi]--;
 	if (ipu->csi_use_count[csi] == 0) {
@@ -2359,6 +2370,7 @@ int32_t ipu_disable_csi(struct ipu_soc *ipu, uint32_t csi)
 			ipu_cm_write(ipu, reg & ~IPU_CONF_CSI1_EN, IPU_CONF);
 	}
 	_ipu_unlock(ipu);
+	_ipu_put(ipu);
 	return 0;
 }
 EXPORT_SYMBOL(ipu_disable_csi);
@@ -2928,13 +2940,21 @@ static const struct dev_pm_ops mxcipu_pm_ops = {
 	.resume_noirq = ipu_resume_noirq,
 };
 
+static const struct of_device_id mxc_ipu_dt_ids[] = {
+	{ .compatible = "fsl,ipuv3", },
+	{ /* sentinel */ }
+};
+
 /*!
  * This structure contains pointers to the power management callback functions.
  */
 static struct platform_driver mxcipu_driver = {
 	.driver = {
 		   .name = "imx-ipuv3",
+#ifdef CONFIG_PM
 		   .pm = &mxcipu_pm_ops,
+#endif
+		   .of_match_table = mxc_ipu_dt_ids,
 		   },
 	.probe = ipu_probe,
 	.remove = ipu_remove,

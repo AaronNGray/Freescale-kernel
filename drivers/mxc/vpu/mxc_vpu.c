@@ -19,6 +19,7 @@
  * @ingroup VPU
  */
 
+#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/interrupt.h>
@@ -42,7 +43,6 @@
 #include <mach/clock.h>
 #include <mach/hardware.h>
 #include <mach/iram.h>
-
 #include <mach/mxc_vpu.h>
 
 struct vpu_priv {
@@ -86,6 +86,7 @@ static struct mxc_vpu_platform_data *vpu_plat;
 static struct iram_setting iram;
 
 /* implement the blocking ioctl */
+static int irq_status;
 static int codec_done;
 static wait_queue_head_t vpu_queue;
 
@@ -211,14 +212,17 @@ static inline void vpu_worker_callback(struct work_struct *w)
 	if (dev->async_queue)
 		kill_fasync(&dev->async_queue, SIGIO, POLL_IN);
 
-	codec_done = 1;
-	wake_up_interruptible(&vpu_queue);
-
+	irq_status = 1;
 	/*
 	 * Clock is gated on when dec/enc started, gate it off when
-	 * interrupt is received.
+	 * codec is done.
 	 */
-	clk_disable(vpu_clk);
+	if (codec_done) {
+		clk_disable(vpu_clk);
+		codec_done = 0;
+	}
+
+	wake_up_interruptible(&vpu_queue);
 }
 
 /*!
@@ -227,8 +231,11 @@ static inline void vpu_worker_callback(struct work_struct *w)
 static irqreturn_t vpu_ipi_irq_handler(int irq, void *dev_id)
 {
 	struct vpu_priv *dev = dev_id;
+	unsigned long reg;
 
-	READ_REG(BIT_INT_STATUS);
+	reg = READ_REG(BIT_INT_REASON);
+	if (reg & 0x8)
+		codec_done = 1;
 	WRITE_REG(0x1, BIT_INT_CLEAR);
 
 	queue_work(dev->workqueue, &dev->work);
@@ -243,8 +250,11 @@ static irqreturn_t vpu_ipi_irq_handler(int irq, void *dev_id)
 static irqreturn_t vpu_jpu_irq_handler(int irq, void *dev_id)
 {
 	struct vpu_priv *dev = dev_id;
+	unsigned long reg;
 
-	WRITE_REG(0, MJPEG_PIC_STATUS_REG);
+	reg = READ_REG(MJPEG_PIC_STATUS_REG);
+	if (reg & 0x3)
+		codec_done = 1;
 
 	queue_work(dev->workqueue, &dev->work);
 
@@ -351,7 +361,7 @@ static long vpu_ioctl(struct file *filp, u_int cmd,
 		{
 			u_long timeout = (u_long) arg;
 			if (!wait_event_interruptible_timeout
-			    (vpu_queue, codec_done != 0,
+			    (vpu_queue, irq_status != 0,
 			     msecs_to_jiffies(timeout))) {
 				printk(KERN_WARNING "VPU blocking: timeout.\n");
 				ret = -ETIME;
@@ -360,7 +370,7 @@ static long vpu_ioctl(struct file *filp, u_int cmd,
 				       "VPU interrupt received.\n");
 				ret = -ERESTARTSYS;
 			} else
-				codec_done = 0;
+				irq_status = 0;
 			break;
 		}
 	case VPU_IOC_IRAM_SETTING:
@@ -468,6 +478,26 @@ static long vpu_ioctl(struct file *filp, u_int cmd,
 							     vpu_mem_desc)))
 					ret = -EFAULT;
 			}
+			break;
+		}
+	/*
+	 * The following two ioctl is used when user allocates working buffer
+	 * and register it to vpu driver.
+	 */
+	case VPU_IOC_QUERY_BITWORK_MEM:
+		{
+			if (copy_to_user((void __user *)arg,
+					 &bitwork_mem,
+					 sizeof(struct vpu_mem_desc)))
+				ret = -EFAULT;
+			break;
+		}
+	case VPU_IOC_SET_BITWORK_MEM:
+		{
+			if (copy_from_user(&bitwork_mem,
+					   (struct vpu_mem_desc *)arg,
+					   sizeof(struct vpu_mem_desc)))
+				ret = -EFAULT;
 			break;
 		}
 	case VPU_IOC_SYS_SW_RESET:
@@ -624,7 +654,10 @@ static int vpu_dev_probe(struct platform_device *pdev)
 		iram.end = addr +  vpu_plat->iram_size - 1;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (pdev->dev.of_node)
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	else
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vpu_regs");
 	if (!res) {
 		printk(KERN_ERR "vpu: unable to get vpu base addr\n");
 		return -ENODEV;
@@ -658,30 +691,33 @@ static int vpu_dev_probe(struct platform_device *pdev)
 		goto err_out_class;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!res) {
+	if (pdev->dev.of_node)
+		vpu_ipi_irq = platform_get_irq(pdev, 0);
+	else
+		vpu_ipi_irq = platform_get_irq_byname(pdev, "vpu_ipi_irq");
+	if (vpu_ipi_irq < 0) {
 		printk(KERN_ERR "vpu: unable to get vpu interrupt\n");
 		err = -ENXIO;
 		goto err_out_class;
 	}
-	vpu_ipi_irq = res->start;
-
 	err = request_irq(vpu_ipi_irq, vpu_ipi_irq_handler, 0, "VPU_CODEC_IRQ",
 			  (void *)(&vpu_data));
 	if (err)
 		goto err_out_class;
 
 #ifdef MXC_VPU_HAS_JPU
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
-	if (!res) {
+	if (pdev->dev.of_node)
+		vpu_jpu_irq = platform_get_irq(pdev, 1);
+	else
+		vpu_jpu_irq = platform_get_irq_byname(pdev, "vpu_jpu_irq");
+	if (vpu_jpu_irq < 0) {
 		printk(KERN_ERR "vpu: unable to get vpu jpu interrupt\n");
 		err = -ENXIO;
 		free_irq(vpu_ipi_irq, &vpu_data);
 		goto err_out_class;
 	}
-	vpu_jpu_irq = res->start;
-	err = request_irq(vpu_jpu_irq, vpu_jpu_irq_handler, 0, "VPU_JPG_IRQ",
-			  (void *)(&vpu_data));
+	err = request_irq(vpu_jpu_irq, vpu_jpu_irq_handler, IRQF_TRIGGER_RISING,
+			  "VPU_JPG_IRQ", (void *)(&vpu_data));
 	if (err) {
 		free_irq(vpu_ipi_irq, &vpu_data);
 		goto err_out_class;
@@ -846,12 +882,18 @@ recover_clk:
 #define	vpu_resume	NULL
 #endif				/* !CONFIG_PM */
 
+static const struct of_device_id mxc_vpu_dt_ids[] = {
+	{ .compatible = "fsl,vpu", },
+	{ /* sentinel */ }
+};
+
 /*! Driver definition
  *
  */
 static struct platform_driver mxcvpu_driver = {
 	.driver = {
 		   .name = "mxc_vpu",
+		   .of_match_table = mxc_vpu_dt_ids,
 		   },
 	.probe = vpu_dev_probe,
 	.remove = vpu_dev_remove,

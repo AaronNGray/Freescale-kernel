@@ -45,4 +45,8 @@
 #define MX6Q_IRAM_BASE_ADDR		0x00900000
 #define MX6Q_IRAM_SIZE			(SZ_256K - SZ_4K)
 
+#define MX6Q_VPU_BASE_ADDR         	0x02040000
+#define MX6Q_IPU1_BASE_ADDR         	0x02400000
+#define MX6Q_IPU2_BASE_ADDR         	0x02800000
+
 #endif	/* __MACH_MX6Q_H__ */

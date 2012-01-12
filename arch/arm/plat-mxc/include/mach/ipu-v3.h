@@ -125,6 +125,7 @@ typedef union {
 	struct {
 		uint32_t csi;
 		uint32_t mipi_id;
+		uint32_t mipi_vc;
 		bool mipi_en;
 		bool interlaced;
 	} csi_mem;
@@ -324,6 +325,10 @@ enum ipu_irq_line {
 	IPU_IRQ_PP_ROT_OUT_EOF = 50,
 	IPU_IRQ_BG_ALPHA_SYNC_EOF = 51,
 	IPU_IRQ_BG_ALPHA_ASYNC_EOF = 52,
+
+	IPU_IRQ_BG_SYNC_NFACK = 64 + 23,
+	IPU_IRQ_FG_SYNC_NFACK = 64 + 27,
+	IPU_IRQ_DC_SYNC_NFACK = 64 + 28,
 
 	IPU_IRQ_DP_SF_START = 448 + 2,
 	IPU_IRQ_DP_SF_END = 448 + 3,
@@ -690,7 +695,7 @@ uint32_t bytes_per_pixel(uint32_t fmt);
 struct ipuv3_fb_platform_data {
 	char				disp_dev[32];
 	u32				interface_pix_fmt;
-	char				*mode_str;
+	char				mode_str[32];
 	int				default_bpp;
 	bool				int_clk;
 
