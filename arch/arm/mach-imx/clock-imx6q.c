@@ -337,6 +337,12 @@
 #define FREQ_650M	650000000
 #define FREQ_1300M	1300000000
 
+#ifdef CONFIG_CLK_DEBUG
+#define __INIT_CLK_DEBUG(n)	.name = #n,
+#else
+#define __INIT_CLK_DEBUG(n)
+#endif
+
 static struct clk pll1_sys;
 static struct clk pll2_bus;
 static struct clk pll3_usb_otg;
@@ -679,6 +685,7 @@ static int pll_set_rate(struct clk *clk, unsigned long rate)
 
 #define DEF_PLL(name)					\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.enable		= pll_enable,		\
 		.disable	= pll_disable,		\
 		.get_rate	= name##_get_rate,	\
@@ -798,6 +805,7 @@ static void pfd_disable(struct clk *clk)
 
 #define DEF_PFD(name, er, es, p)			\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.enable_reg	= er,			\
 		.enable_shift	= es,			\
 		.enable		= pfd_enable,		\
@@ -822,6 +830,7 @@ static unsigned long pll2_200m_get_rate(struct clk *clk)
 }
 
 static struct clk pll2_200m = {
+	__INIT_CLK_DEBUG(pll2_200m)
 	.parent = &pll2_pfd_400m,
 	.get_rate = pll2_200m_get_rate,
 };
@@ -832,6 +841,7 @@ static unsigned long pll3_120m_get_rate(struct clk *clk)
 }
 
 static struct clk pll3_120m = {
+	__INIT_CLK_DEBUG(pll3_120m)
 	.parent = &pll3_usb_otg,
 	.get_rate = pll3_120m_get_rate,
 };
@@ -842,6 +852,7 @@ static unsigned long pll3_80m_get_rate(struct clk *clk)
 }
 
 static struct clk pll3_80m = {
+	__INIT_CLK_DEBUG(pll3_80m)
 	.parent = &pll3_usb_otg,
 	.get_rate = pll3_80m_get_rate,
 };
@@ -852,6 +863,7 @@ static unsigned long pll3_60m_get_rate(struct clk *clk)
 }
 
 static struct clk pll3_60m = {
+	__INIT_CLK_DEBUG(pll3_60m)
 	.parent = &pll3_usb_otg,
 	.get_rate = pll3_60m_get_rate,
 };
@@ -879,6 +891,7 @@ static int pll1_sw_clk_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk pll1_sw_clk = {
+	__INIT_CLK_DEBUG(pll1_sw_clk)
 	.parent = &pll1_sys,
 	.set_parent = pll1_sw_clk_set_parent,
 };
@@ -1698,6 +1711,7 @@ static int _clk_set_parent(struct clk *clk, struct clk *parent)
 
 #define DEF_NG_CLK(name, p)				\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.get_rate	= _clk_get_rate,	\
 		.set_rate	= _clk_set_rate,	\
 		.round_rate	= _clk_round_rate,	\
@@ -1725,6 +1739,7 @@ DEF_NG_CLK(asrc_serial_clk,	&pll3_usb_otg);
 
 #define DEF_CLK(name, er, es, p, s)			\
 	static struct clk name = {			\
+		__INIT_CLK_DEBUG(name)			\
 		.enable_reg	= er,			\
 		.enable_shift	= es,			\
 		.enable		= _clk_enable,		\
@@ -1828,6 +1843,7 @@ static void pcie_clk_disable(struct clk *clk)
 }
 
 static struct clk pcie_clk = {
+	__INIT_CLK_DEBUG(pcie_clk)
 	.enable_reg = CCGR4,
 	.enable_shift = CG0,
 	.enable = pcie_clk_enable,
@@ -1860,6 +1876,7 @@ static void sata_clk_disable(struct clk *clk)
 }
 
 static struct clk sata_clk = {
+	__INIT_CLK_DEBUG(sata_clk)
 	.enable_reg = CCGR5,
 	.enable_shift = CG2,
 	.enable = sata_clk_enable,
@@ -1995,8 +2012,10 @@ int __init mx6q_clocks_init(void)
 			oscillator_reference = rate;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(lookups); i++)
+	for (i = 0; i < ARRAY_SIZE(lookups); i++) {
 		clkdev_add(&lookups[i]);
+		clk_debug_register(lookups[i].clk);
+	}
 
 	/* only keep necessary clocks on */
 	writel_relaxed(0x3 << CG0  | 0x3 << CG1  | 0x3 << CG2,	CCGR0);

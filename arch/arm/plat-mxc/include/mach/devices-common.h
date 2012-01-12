@@ -144,6 +144,24 @@ struct platform_device *__init imx_add_imx_ssi(
 		const struct imx_imx_ssi_data *data,
 		const struct imx_ssi_platform_data *pdata);
 
+struct imx_spdif_data {
+	resource_size_t iobase;
+	resource_size_t irq;
+};
+struct platform_device *__init imx_add_spdif(
+		const struct imx_spdif_data *data,
+		const struct mxc_spdif_platform_data *pdata);
+
+struct imx_spdif_dai_data {
+	resource_size_t iobase;
+	resource_size_t dmatx;
+	resource_size_t dmarx;
+};
+struct platform_device *__init imx_add_spdif_dai(
+		const struct imx_spdif_dai_data *data);
+
+struct platform_device *__init imx_add_spdif_audio_device(void);
+
 #include <mach/imx-uart.h>
 struct imx_imx_uart_3irq_data {
 	int id;
@@ -183,23 +201,55 @@ struct platform_device *__init imx_add_imx_udc(
 		const struct imx_imx_udc_data *data,
 		const struct imxusb_platform_data *pdata);
 
-#include <mach/ipu.h>
-#include <mach/mx3fb.h>
-#include <mach/mx3_camera.h>
-struct imx_ipu_core_data {
+#include <mach/mxc_vpu.h>
+struct imx_vpu_data {
 	resource_size_t iobase;
-	resource_size_t synirq;
-	resource_size_t errirq;
+	resource_size_t irq_ipi;
+	resource_size_t irq_jpg;
+	bool iram_enable;
+	int iram_size;
+	void (*reset) (void);
+	void (*pg) (int);
 };
-struct platform_device *__init imx_add_ipu_core(
-		const struct imx_ipu_core_data *data,
-		const struct ipu_platform_data *pdata);
-struct platform_device *__init imx_alloc_mx3_camera(
-		const struct imx_ipu_core_data *data,
-		const struct mx3_camera_pdata *pdata);
-struct platform_device *__init imx_add_mx3_sdc_fb(
-		const struct imx_ipu_core_data *data,
-		struct mx3fb_platform_data *pdata);
+struct platform_device *__init imx_add_vpu(
+		const struct imx_vpu_data *data);
+
+#include <mach/ipu-v3.h>
+struct imx_ipuv3_data {
+	resource_size_t iobase;
+	resource_size_t iosize;
+	resource_size_t irq_err;
+	resource_size_t irq;
+	unsigned int irq_start;
+	int (*init) (int);
+	void (*pg) (int);
+};
+struct platform_device *__init imx_add_ipuv3(
+		const int id,
+		const struct imx_ipuv3_data *data,
+		struct imx_ipuv3_platform_data *pdata);
+
+struct platform_device *__init imx_add_ipuv3_fb(
+		const int id,
+		const struct ipuv3_fb_platform_data *pdata);
+
+#include <linux/fsl_devices.h>
+struct imx_tve_data {
+	resource_size_t iobase;
+	resource_size_t irq;
+};
+struct platform_device *__init imx_add_tve(
+		const struct imx_tve_data *data,
+		const struct fsl_mxc_tve_platform_data *pdata);
+
+struct imx_ldb_data {
+	resource_size_t iobase;
+	resource_size_t iosize;
+};
+
+struct platform_device *__init imx_add_ldb(
+	const struct imx_ldb_data *data,
+	struct fsl_mxc_ldb_platform_data *pdata);
 
 #include <mach/mx1_camera.h>
 struct imx_mx1_camera_data {
@@ -331,3 +381,32 @@ struct imx_ahci_imx_data {
 struct platform_device *__init imx_add_ahci_imx(
 		const struct imx_ahci_imx_data *data,
 		const struct ahci_platform_data *pdata);
+
+struct imx_srtc_data {
+	resource_size_t iobase;
+	resource_size_t irq;
+};
+struct platform_device *__init imx_add_srtc(
+		const struct imx_srtc_data *data);
+
+struct imx_iim_data {
+	resource_size_t iobase;
+	resource_size_t irq;
+};
+struct platform_device *__init imx_add_iim(
+		const struct imx_iim_data *data,
+		const struct mxc_iim_platform_data *pdata);
+
+#include <mach/mxc_gpu.h>
+struct imx_mxc_gpu_data {
+	resource_size_t irq_2d;
+	resource_size_t irq_3d;
+	resource_size_t iobase_2d;
+	resource_size_t iobase_3d;
+	resource_size_t gmem_base;
+	resource_size_t gmem_size;
+};
+
+struct platform_device *__init imx_add_mxc_gpu(
+		const struct imx_mxc_gpu_data *data,
+		const struct mxc_gpu_platform_data *pdata);

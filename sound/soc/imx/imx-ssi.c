@@ -89,14 +89,13 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 	struct imx_ssi *ssi = snd_soc_dai_get_drvdata(cpu_dai);
 	u32 strcr = 0, scr;
 
-	scr = readl(ssi->base + SSI_SCR) & ~(SSI_SCR_SYN | SSI_SCR_NET);
+	scr = readl(ssi->base + SSI_SCR) & ~SSI_SCR_SYN;
 
 	/* DAI mode */
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
 		/* data on rising edge of bclk, frame low 1clk before data */
 		strcr |= SSI_STCR_TFSI | SSI_STCR_TEFS | SSI_STCR_TXBIT0;
-		scr |= SSI_SCR_NET;
 		if (ssi->flags & IMX_SSI_USE_I2S_SLAVE) {
 			scr &= ~SSI_I2S_MODE_MASK;
 			scr |= SSI_SCR_I2S_MODE_SLAVE;
@@ -145,8 +144,6 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 
 	strcr |= SSI_STCR_TFEN0;
 
-	if (ssi->flags & IMX_SSI_NET)
-		scr |= SSI_SCR_NET;
 	if (ssi->flags & IMX_SSI_SYN)
 		scr |= SSI_SCR_SYN;
 
@@ -243,7 +240,8 @@ static int imx_ssi_hw_params(struct snd_pcm_substream *substream,
 {
 	struct imx_ssi *ssi = snd_soc_dai_get_drvdata(cpu_dai);
 	struct imx_pcm_dma_params *dma_data;
-	u32 reg, sccr;
+	u32 reg, sccr, scr;
+	unsigned int channels = params_channels(params);
 
 	/* Tx/Rx config */
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -276,6 +274,14 @@ static int imx_ssi_hw_params(struct snd_pcm_substream *substream,
 
 	writel(sccr, ssi->base + reg);
 
+	scr = readl(ssi->base + SSI_SCR);
+
+	if (channels == 1)
+		scr &= ~SSI_SCR_NET;
+	else
+		scr |= SSI_SCR_NET;
+
+	writel(scr, ssi->base + SSI_SCR);
 	return 0;
 }
 
@@ -391,6 +397,9 @@ static u64 imx_pcm_dmamask = DMA_BIT_MASK(32);
 int imx_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
@@ -398,14 +407,17 @@ int imx_pcm_new(struct snd_soc_pcm_runtime *rtd)
 		card->dev->dma_mask = &imx_pcm_dmamask;
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
-	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
+
+	if (cpu_dai->driver->playback.channels_min &&
+	    codec_dai->driver->playback.channels_min) {
 		ret = imx_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret)
 			goto out;
 	}
 
-	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
+	if (cpu_dai->driver->capture.channels_min &&
+	    codec_dai->driver->capture.channels_min) {
 		ret = imx_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE);
 		if (ret)
@@ -658,6 +670,8 @@ static int imx_ssi_probe(struct platform_device *pdev)
 
 	ssi->dma_params_tx.burstsize = 4;
 	ssi->dma_params_rx.burstsize = 4;
+	ssi->dma_params_tx.peripheral_type = IMX_DMATYPE_SSI_SP;
+	ssi->dma_params_rx.peripheral_type = IMX_DMATYPE_SSI_SP;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "tx0");
 	if (res)

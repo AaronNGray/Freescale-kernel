@@ -50,6 +50,36 @@
 #define IMX_CHIP_REVISION_3_3		0x33
 #define IMX_CHIP_REVISION_UNKNOWN	0xff
 
+#define IMX_CHIP_REVISION_1_0_STRING		"1.0"
+#define IMX_CHIP_REVISION_1_1_STRING		"1.1"
+#define IMX_CHIP_REVISION_1_2_STRING		"1.2"
+#define IMX_CHIP_REVISION_1_3_STRING		"1.3"
+#define IMX_CHIP_REVISION_2_0_STRING		"2.0"
+#define IMX_CHIP_REVISION_2_1_STRING		"2.1"
+#define IMX_CHIP_REVISION_2_2_STRING		"2.2"
+#define IMX_CHIP_REVISION_2_3_STRING		"2.3"
+#define IMX_CHIP_REVISION_3_0_STRING		"3.0"
+#define IMX_CHIP_REVISION_3_1_STRING		"3.1"
+#define IMX_CHIP_REVISION_3_2_STRING		"3.2"
+#define IMX_CHIP_REVISION_3_3_STRING		"3.3"
+#define IMX_CHIP_REVISION_UNKNOWN_STRING	"unknown"
+
+#define IMX_BOARD_REV_1		0x000
+#define IMX_BOARD_REV_2		0x100
+#define IMX_BOARD_REV_3		0x200
+
+#ifndef __ASSEMBLY__
+extern unsigned int system_rev;
+#define board_is_rev(rev)	(((system_rev & 0x0F00) == rev) ? 1 : 0)
+#define imx_cpu_ver()		(system_rev & 0xFF)
+#endif
+
+#ifdef CONFIG_ARCH_MX5
+#define board_is_mx53_arm2() (cpu_is_mx53() && board_is_rev(IMX_BOARD_REV_2))
+#define board_is_mx53_evk_a()    (cpu_is_mx53() && board_is_rev(IMX_BOARD_REV_1))
+#define board_is_mx53_evk_b()    (cpu_is_mx53() && board_is_rev(IMX_BOARD_REV_3))
+#endif
+
 #ifndef __ASSEMBLY__
 extern unsigned int __mxc_cpu_type;
 #endif
@@ -162,19 +192,38 @@ extern unsigned int __mxc_cpu_type;
 # define cpu_is_mx53()		(0)
 #endif
 
+#define cpu_is_mx6q()		(0)
+
 #ifndef __ASSEMBLY__
 
+#include <mach/common.h>
+
 struct cpu_op {
+	u32 pll_reg;
+	u32 pll_rate;
 	u32 cpu_rate;
 	int cpu_voltage;
+	u32 pdr0_reg;
+	u32 pdf;
+	u32 mfi;
+	u32 mfd;
+	u32 mfn;
+	u32 cpu_voltage;
+	u32 cpu_podf;
 };
 
 int tzic_enable_wake(int is_idle);
 
+extern void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode);
 extern struct cpu_op *(*get_cpu_op)(int *op);
 #endif
 
 #define cpu_is_mx3()	(cpu_is_mx31() || cpu_is_mx35())
 #define cpu_is_mx2()	(cpu_is_mx21() || cpu_is_mx27())
+
+#define MXC_PGCR_PCR		1
+#define MXC_SRPGCR_PCR		1
+#define MXC_EMPGCR_PCR		1
+#define MXC_PGSR_PSR		1
 
 #endif /*  __ASM_ARCH_MXC_H__ */

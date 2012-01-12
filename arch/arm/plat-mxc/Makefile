@@ -25,3 +25,11 @@ obj-y += ssi-fiq-ksym.o
 endif
 
 obj-y += devices/
+
+obj-$(CONFIG_ARCH_MX5) += dvfs_core.o
+
+# DVFS-PER support
+obj-$(CONFIG_MXC_DVFS_PER)	+= dvfs_per.o
+obj-$(CONFIG_UTMI_MXC)    += utmixc.o
+
+obj-$(CONFIG_USB_EHCI_ARC)	+= usb_common.o usb_wakeup.o

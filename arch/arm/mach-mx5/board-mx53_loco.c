@@ -23,10 +23,15 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
+#include <linux/fsl_devices.h>
+#include <linux/ipu.h>
+#include <linux/pwm_backlight.h>
+#include <linux/memblock.h>
 
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <mach/iomux-mx53.h>
+#include <mach/ipu-v3.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -34,8 +39,11 @@
 
 #include "crm_regs.h"
 #include "devices-imx53.h"
+#include "devices.h"
+#include "usb.h"
 
 #define MX53_LOCO_POWER			IMX_GPIO_NR(1, 8)
+#define LOCO_HEADPHONE_DET		IMX_GPIO_NR(2, 5)
 #define MX53_LOCO_UI1			IMX_GPIO_NR(2, 14)
 #define MX53_LOCO_UI2			IMX_GPIO_NR(2, 15)
 #define LOCO_FEC_PHY_RST		IMX_GPIO_NR(7, 6)
@@ -44,6 +52,14 @@
 #define LOCO_SD3_WP			IMX_GPIO_NR(3, 12)
 #define LOCO_SD1_CD			IMX_GPIO_NR(3, 13)
 #define LOCO_ACCEL_EN			IMX_GPIO_NR(6, 14)
+#define LOCO_DISP0_PWR			IMX_GPIO_NR(3, 24)
+#define LOCO_DISP0_DET_INT		IMX_GPIO_NR(3, 31)
+#define LOCO_DISP0_RESET		IMX_GPIO_NR(5, 0)
+
+extern void __iomem *ccm_base;
+extern void __iomem *imx_otg_base;
+
+#define LOCO_USBH1_VBUS			IMX_GPIO_NR(7, 8)
 
 static iomux_v3_cfg_t mx53_loco_pads[] = {
 	/* FEC */
@@ -227,6 +243,52 @@ static const struct esdhc_platform_data mx53_loco_sd3_data __initconst = {
 	.wp_type = ESDHC_WP_GPIO,
 };
 
+static struct mxc_audio_platform_data loco_audio_data;
+
+static int loco_sgtl5000_init(void)
+{
+	struct clk *ssi_ext1;
+	int rate;
+
+	ssi_ext1 = clk_get(NULL, "ssi_ext1_clk");
+	if (IS_ERR(ssi_ext1))
+		return -1;
+
+	rate = clk_round_rate(ssi_ext1, 24000000);
+	if (rate < 8000000 || rate > 27000000) {
+			pr_err("Error: SGTL5000 mclk freq %d out of range!\n",
+				   rate);
+			clk_put(ssi_ext1);
+			return -1;
+	}
+
+	loco_audio_data.sysclk = rate;
+	clk_set_rate(ssi_ext1, rate);
+	clk_enable(ssi_ext1);
+
+	return 0;
+}
+
+static struct imx_ssi_platform_data loco_ssi_pdata = {
+	.flags = IMX_SSI_DMA | IMX_SSI_SYN,
+};
+
+static struct mxc_audio_platform_data loco_audio_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 5,
+	.init = loco_sgtl5000_init,
+	.hp_gpio = LOCO_HEADPHONE_DET,
+	.hp_active_low = 1,
+};
+
+static struct platform_device loco_audio_device = {
+	.name = "imx-sgtl5000",
+	.dev = {
+		.platform_data	= &loco_audio_data,
+	}
+};
+
 static inline void mx53_loco_fec_reset(void)
 {
 	int ret;
@@ -246,8 +308,78 @@ static const struct fec_platform_data mx53_loco_fec_data __initconst = {
 	.phy = PHY_INTERFACE_MODE_RMII,
 };
 
+static void sii902x_hdmi_reset(void)
+{
+	gpio_set_value(LOCO_DISP0_RESET, 0);
+	msleep(10);
+	gpio_set_value(LOCO_DISP0_RESET, 1);
+	msleep(10);
+}
+
+static struct fsl_mxc_lcd_platform_data sii902x_hdmi_data = {
+	.ipu_id = 0,
+	.disp_id = 0,
+	.reset = sii902x_hdmi_reset,
+};
+
 static const struct imxi2c_platform_data mx53_loco_i2c_data __initconst = {
 	.bitrate = 100000,
+};
+
+static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
+	{
+		.type = "mma8450",
+		.addr = 0x1C,
+	},
+};
+
+static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
+	[0] = {
+		.type	= "sgtl5000",
+		.addr	= 0x0a,
+	},
+	[1] = {
+		.type	= "sii902x",
+		.addr	= 0x39,
+		.platform_data = &sii902x_hdmi_data,
+	},
+};
+
+static struct fsl_mxc_lcd_platform_data lcdif_data = {
+	.ipu_id = 0,
+	.disp_id = 0,
+	.default_ifmt = IPU_PIX_FMT_RGB565,
+};
+
+static struct fsl_mxc_ldb_platform_data ldb_data = {
+	.ipu_id = 0,
+	.disp_id = 0,
+	.ext_ref = 1,
+	.mode = LDB_SIN0,
+};
+
+static struct fsl_mxc_tve_platform_data tve_data = {
+	.dac_reg = "DA9052_LDO7",
+};
+
+static struct ipuv3_fb_platform_data loco_fb_data[] = {
+	{ /*fb0*/
+	.disp_dev = "hdmi",
+	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
+	.mode_str = "1920x1080M@60",
+	.default_bpp = 16,
+	.int_clk = false,
+	}, {
+	.disp_dev = "vga",
+	.interface_pix_fmt = IPU_PIX_FMT_GBR24,
+	.mode_str = "VGA-XGA",
+	.default_bpp = 16,
+	.int_clk = false,
+	},
+};
+
+static struct imx_ipuv3_platform_data ipu_data = {
+	.rev = 3,
 };
 
 static const struct gpio_led mx53loco_leds[] __initconst = {
@@ -275,11 +407,136 @@ static struct i2c_board_info mx53loco_i2c_devices[] = {
 	},
 };
 
-static void __init mx53_loco_board_init(void)
+static struct mxc_gpu_platform_data gpu_data __initdata = {
+	.reserved_mem_size	= SZ_64M,
+};
+
+static void mxc_iim_enable_fuse(void)
+{
+	u32 reg;
+	if (!ccm_base)
+		return;
+	/* enable fuse blown */
+	reg = readl(ccm_base + 0x64);
+	reg |= 0x10;
+	writel(reg, ccm_base + 0x64);
+}
+
+static void mxc_iim_disable_fuse(void)
+{
+	u32 reg;
+	if (!ccm_base)
+		return;
+	/* enable fuse blown */
+	reg = readl(ccm_base + 0x64);
+	reg &= ~0x10;
+	writel(reg, ccm_base + 0x64);
+}
+
+static struct mxc_iim_platform_data iim_data = {
+	.bank_start = MXC_IIM_MX53_BANK_START_ADDR,
+	.bank_end   = MXC_IIM_MX53_BANK_END_ADDR,
+	.enable_fuse = mxc_iim_enable_fuse,
+	.disable_fuse = mxc_iim_disable_fuse,
+};
+
+static void loco_suspend_enter(void)
+{
+	/* da9053 suspend preparation */
+}
+
+static void loco_suspend_exit(void)
+{
+	/*clear the EMPGC0/1 bits */
+	__raw_writel(0, MXC_SRPG_EMPGC0_SRPGCR);
+	__raw_writel(0, MXC_SRPG_EMPGC1_SRPGCR);
+	/* da9053 resmue resore */
+}
+
+static struct mxc_pm_platform_data loco_pm_data = {
+        .suspend_enter = loco_suspend_enter,
+        .suspend_exit = loco_suspend_exit,
+};
+
+extern int __init mx53_loco_init_da9052(void);
+extern void da9053_power_off(void);
+
+static struct platform_pwm_backlight_data loco_pwm_backlight_data = {
+	.pwm_id = 1,
+	.max_brightness = 255,
+	.dft_brightness = 128,
+	.pwm_period_ns = 50000,
+};
+
+static void mx53_loco_usbh1_vbus(bool on)
+{
+        if (on)
+                gpio_set_value(LOCO_USBH1_VBUS, 1);
+        else
+                gpio_set_value(LOCO_USBH1_VBUS, 0);
+}
+
+static void __init mx53_loco_io_init(void)
 {
 	int ret;
 	imx53_soc_init();
 	imx53_qsb_common_init();
+
+	mxc_iomux_v3_setup_multiple_pads(mx53_loco_pads,
+					ARRAY_SIZE(mx53_loco_pads));
+
+	/* Sii902x HDMI controller */
+	ret = gpio_request(LOCO_DISP0_RESET, "disp0-reset");
+	if (ret) {
+		printk(KERN_ERR"failed to get GPIO_LOCO_DISP0_RESET: %d\n", ret);
+		return;
+	}
+	gpio_direction_output(LOCO_DISP0_RESET, 0);
+
+	ret = gpio_request(LOCO_DISP0_DET_INT, "disp0-detect");
+	if (ret) {
+		printk(KERN_ERR"failed to get GPIO_LOCO_DISP0_DET_INT: %d\n", ret);
+		return;
+	}
+	gpio_direction_input(LOCO_DISP0_DET_INT);
+
+	/* enable disp0 power */
+	ret = gpio_request(LOCO_DISP0_PWR, "disp0-power-en");
+	if (ret) {
+		printk(KERN_ERR"failed to get GPIO_LOCO_DISP0_PWR: %d\n", ret);
+		return;
+	}
+	gpio_direction_output(LOCO_DISP0_PWR, 1);
+}
+
+static struct mxc_spdif_platform_data mxc_spdif_data = {
+	.spdif_tx = 1,
+	.spdif_rx = 0,
+	.spdif_clk_44100 = -1,	/* No source for 44.1K */
+	/* Source from CCM spdif_clk (24M) for 48k and 32k
+	 * It's not accurate: for 48Khz it is actually 46875Hz (2.3% off)
+	 */
+	.spdif_clk_48000 = 1,
+	.spdif_clkid = 0,
+	.spdif_clk = NULL,	/* spdif bus clk */
+};
+
+static void __init mx53_loco_board_init(void)
+{
+	int i, ret;
+
+	mx53_loco_io_init();
+
+	imx53_add_ipuv3(0, &ipu_data);
+
+	for (i = 0; i < ARRAY_SIZE(loco_fb_data); i++)
+		imx53_add_ipuv3fb(i, &loco_fb_data[i]);
+
+	imx53_add_vpu();
+	imx53_add_lcdif(&lcdif_data);
+	imx53_add_ldb(&ldb_data);
+	imx53_add_tve(&tve_data);
+	imx53_add_v4l2_output(0);
 
 	imx53_add_imx_uart(0, NULL);
 	mx53_loco_fec_reset();
@@ -294,11 +551,62 @@ static void __init mx53_loco_board_init(void)
 				ARRAY_SIZE(mx53loco_i2c_devices));
 	imx53_add_imx_i2c(0, &mx53_loco_i2c_data);
 	imx53_add_imx_i2c(1, &mx53_loco_i2c_data);
+	i2c_register_board_info(0, mxc_i2c0_board_info,
+				ARRAY_SIZE(mxc_i2c0_board_info));
+
+	mxc_i2c1_board_info[1].irq = gpio_to_irq(LOCO_DISP0_DET_INT);
+
+	i2c_register_board_info(1, mxc_i2c1_board_info,
+				ARRAY_SIZE(mxc_i2c1_board_info));
+
 	imx53_add_sdhci_esdhc_imx(0, &mx53_loco_sd1_data);
 	imx53_add_sdhci_esdhc_imx(2, &mx53_loco_sd3_data);
+	platform_device_register(&loco_audio_device);
+	imx53_add_imx_ssi(1, &loco_ssi_pdata);
+	imx53_add_srtc();
 	imx_add_gpio_keys(&loco_button_data);
 	gpio_led_register_device(-1, &mx53loco_leds_data);
 	imx53_add_ahci_imx();
+	irq_set_irq_wake(gpio_to_irq(MX53_LOCO_POWER), 1);
+	imx53_add_iim(&iim_data);
+
+	i2c_register_board_info(0, mxc_i2c0_board_info,
+				ARRAY_SIZE(mxc_i2c0_board_info));
+
+	mxc_pm_device.dev.platform_data = &loco_pm_data;
+	platform_device_register(&mxc_pm_device);
+	mx53_loco_init_da9052();
+	pm_power_off = da9053_power_off;
+
+	imx53_add_mxc_pwm(1);
+	imx53_add_mxc_pwm_backlight(0, &loco_pwm_backlight_data);
+
+	mxc_spdif_data.spdif_core_clk = clk_get(NULL, "spdif_xtal_clk");
+	clk_put(mxc_spdif_data.spdif_core_clk);
+
+	imx53_add_spdif(&mxc_spdif_data);
+	imx53_add_spdif_dai();
+	imx53_add_spdif_audio_device();
+
+	/*GPU*/
+	if (mx53_revision() >= IMX_CHIP_REVISION_2_0)
+		gpu_data.z160_revision = 1;
+	else
+		gpu_data.z160_revision = 0;
+	imx53_add_mxc_gpu(&gpu_data);
+
+        /* USB */
+	imx_otg_base = MX53_IO_ADDRESS(MX53_OTG_BASE_ADDR);
+	/* usb host1 vbus */
+        ret = gpio_request(LOCO_USBH1_VBUS, "usbh1-vbus");
+        if (ret) {
+                printk(KERN_ERR"failed to get GPIO LOCO_USBH1_VBUS: %d\n", ret);
+                return;
+        }
+        gpio_direction_output(LOCO_USBH1_VBUS, 0);
+        mx5_set_host1_vbus_func(mx53_loco_usbh1_vbus);
+        mx5_usbh1_init();
+	mx5_usb_dr_init();
 }
 
 static void __init mx53_loco_timer_init(void)
@@ -310,6 +618,18 @@ static struct sys_timer mx53_loco_timer = {
 	.init	= mx53_loco_timer_init,
 };
 
+static void __init mx53_loco_reserve(void)
+{
+	phys_addr_t phys;
+
+	if (gpu_data.reserved_mem_size) {
+		phys = memblock_alloc(gpu_data.reserved_mem_size, SZ_4K);
+		memblock_free(phys, gpu_data.reserved_mem_size);
+		memblock_remove(phys, gpu_data.reserved_mem_size);
+		gpu_data.reserved_mem_base = phys;
+	}
+}
+
 MACHINE_START(MX53_LOCO, "Freescale MX53 LOCO Board")
 	.map_io = mx53_map_io,
 	.init_early = imx53_init_early,
@@ -317,4 +637,5 @@ MACHINE_START(MX53_LOCO, "Freescale MX53 LOCO Board")
 	.handle_irq = imx53_handle_irq,
 	.timer = &mx53_loco_timer,
 	.init_machine = mx53_loco_board_init,
+	.reserve = mx53_loco_reserve,
 MACHINE_END

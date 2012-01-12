@@ -39,6 +39,12 @@ source "arch/arm/mach-mx5/Kconfig"
 
 endmenu
 
+# set if we need the UTMI transceiver
+config UTMI_MXC
+        bool
+        default y
+        depends on ARCH_MX25 || ARCH_MX35 || ARCH_MX37 || ARCH_MX503
+
 config MXC_IRQ_PRIOR
 	bool "Use IRQ priority"
 	help
@@ -105,5 +111,12 @@ config ARCH_MXC_AUDMUX_V2
 config IRAM_ALLOC
 	bool
 	select GENERIC_ALLOCATOR
+
+config CLK_DEBUG
+	bool "clock debug information export to user space"
+	depends on PM_DEBUG && DEBUG_FS
+	default n
+	help
+	  export clk debug information to user space
 
 endif

@@ -630,6 +630,12 @@ config FSL_OTP
 
 	  If unsure, it is safe to say Y.
 
+config MXC_IIM
+	tristate "MXC IIM device driver"
+	depends on ARCH_MXC
+	help
+	  Support for access to MXC IIM device, most people should say N here.
+
 config MSM_SMD_PKT
 	bool "Enable device interface for some SMD packet ports"
 	default n

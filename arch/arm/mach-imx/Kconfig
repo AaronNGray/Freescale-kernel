@@ -606,6 +606,7 @@ config SOC_IMX6Q
 	select IRAM_ALLOC
 	select ARM_CPU_SUSPEND if PM
 	select USE_OF
+	select ARCH_MXC_IOMUX_V3
 
 	help
 	  This enables support for Freescale i.MX6 Quad processor.
