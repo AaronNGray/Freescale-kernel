@@ -203,13 +203,12 @@ struct cpu_op {
 	u32 pll_reg;
 	u32 pll_rate;
 	u32 cpu_rate;
-	int cpu_voltage;
+	u32 cpu_voltage;
 	u32 pdr0_reg;
 	u32 pdf;
 	u32 mfi;
 	u32 mfd;
 	u32 mfn;
-	u32 cpu_voltage;
 	u32 cpu_podf;
 };
 
