@@ -165,6 +165,8 @@ static void __init imx6q_map_io(void)
 
 	init_consistent_dma_size(SZ_64M);
 
+	mxc_set_cpu_type(MXC_CPU_MX6Q);
+
 	if (!system_rev)
 		system_rev = 0x63000;
 }
