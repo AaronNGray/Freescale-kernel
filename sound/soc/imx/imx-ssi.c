@@ -40,6 +40,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/of.h>
 
 #include <sound/core.h>
 #include <sound/initval.h>
@@ -53,6 +54,11 @@
 #include "imx-ssi.h"
 
 #define SSI_SACNT_DEFAULT (SSI_SACNT_AC97EN | SSI_SACNT_FV)
+
+static const struct of_device_id imx_ssi_dt_ids[] = {
+	{ .compatible = "fsl,imx1-ssi", },
+	{ /* sentinel */ }
+};
 
 /*
  * SSI Network Mode or TDM slots configuration.
@@ -603,11 +609,45 @@ struct snd_ac97_bus_ops soc_ac97_ops = {
 };
 EXPORT_SYMBOL_GPL(soc_ac97_ops);
 
+#ifdef CONFIG_OF
+static int imx_ssi_probe_dt(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct imx_ssi *ssi = platform_get_drvdata(pdev);
+
+	if (!np)
+		return -ENODEV;
+
+	if (of_get_property(np, "fsl,ssi-uses-dma", NULL))
+		ssi->flags |= IMX_SSI_DMA;
+
+	if (of_get_property(np, "fsl,ssi-synchronous-mode", NULL))
+		ssi->flags |= IMX_SSI_SYN;
+
+	if (of_get_property(np, "fsl,ssi-network-mode", NULL))
+		ssi->flags |= IMX_SSI_NET;
+
+	if (of_get_property(np, "fsl,ssi-as-ac97", NULL))
+		ssi->flags |= IMX_SSI_USE_AC97;
+
+	if (of_get_property(np, "fsl,ssi-as-i2s-slave", NULL))
+		ssi->flags |= IMX_SSI_USE_I2S_SLAVE;
+
+	return 0;
+}
+#else
+static inline int imx_ssi_probe_dt(struct platform_device *pdev)
+{
+	return -ENODEV;
+}
+#endif
+
 static int imx_ssi_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct imx_ssi *ssi;
 	struct imx_ssi_platform_data *pdata = pdev->dev.platform_data;
+	int dma_events[2];
 	int ret = 0;
 	struct snd_soc_dai_driver *dai;
 
@@ -616,7 +656,8 @@ static int imx_ssi_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	dev_set_drvdata(&pdev->dev, ssi);
 
-	if (pdata) {
+	ret = imx_ssi_probe_dt(pdev);
+	if (ret < 0 && pdata) {
 		ssi->ac97_reset = pdata->ac97_reset;
 		ssi->ac97_warm_reset = pdata->ac97_warm_reset;
 		ssi->flags = pdata->flags;
@@ -673,13 +714,20 @@ static int imx_ssi_probe(struct platform_device *pdev)
 	ssi->dma_params_tx.peripheral_type = IMX_DMATYPE_SSI_SP;
 	ssi->dma_params_rx.peripheral_type = IMX_DMATYPE_SSI_SP;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "tx0");
-	if (res)
-		ssi->dma_params_tx.dma = res->start;
+	ret = of_property_read_u32_array(pdev->dev.of_node, "fsl,dma-events",
+					 dma_events, ARRAY_SIZE(dma_events));
+	if (ret < 0) {
+		res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "tx0");
+		if (res)
+			ssi->dma_params_tx.dma = res->start;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "rx0");
-	if (res)
-		ssi->dma_params_rx.dma = res->start;
+		res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "rx0");
+		if (res)
+			ssi->dma_params_rx.dma = res->start;
+	} else {
+		ssi->dma_params_tx.dma = dma_events[0];
+		ssi->dma_params_rx.dma = dma_events[1];
+	}
 
 	platform_set_drvdata(pdev, ssi);
 
@@ -768,6 +816,7 @@ static struct platform_driver imx_ssi_driver = {
 	.driver = {
 		.name = "imx-ssi",
 		.owner = THIS_MODULE,
+		.of_match_table = imx_ssi_dt_ids,
 	},
 };
 

@@ -185,18 +185,27 @@
 				};
 
 				ssi@02028000 { /* SSI1 */
+					compatible = "fsl,imx6q-ssi", "fsl,imx1-ssi";
 					reg = <0x02028000 0x4000>;
 					interrupts = <0 46 0x04>;
+					fsl,dma-events = <38 37>;
+					status = "disabled";
 				};
 
 				ssi@0202c000 { /* SSI2 */
+					compatible = "fsl,imx6q-ssi", "fsl,imx1-ssi";
 					reg = <0x0202c000 0x4000>;
 					interrupts = <0 47 0x04>;
+					fsl,dma-events = <42 41>;
+					status = "disabled";
 				};
 
 				ssi@02030000 { /* SSI3 */
+					compatible = "fsl,imx6q-ssi", "fsl,imx1-ssi";
 					reg = <0x02030000 0x4000>;
 					interrupts = <0 48 0x04>;
+					fsl,dma-events = <46 45>;
+					status = "disabled";
 				};
 
 				asrc@02034000 {
@@ -422,6 +431,7 @@
 				compatible = "fsl,imx6q-sdma", "fsl,imx35-sdma";
 				reg = <0x020ec000 0x4000>;
 				interrupts = <0 2 0x04>;
+				fsl,sdma-ram-script-name = "imx/sdma/sdma-imx6q-to1.bin";
 			};
 		};
 
@@ -550,7 +560,9 @@
 			};
 
 			audmux@021d8000 {
+				compatible = "fsl,audmux-v2";
 				reg = <0x021d8000 0x4000>;
+				status = "disabled";
 			};
 
 			mipi@021dc000 { /* MIPI-CSI */

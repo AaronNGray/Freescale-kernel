@@ -23,6 +23,8 @@
 #include <linux/phy.h>
 #include <linux/micrel_phy.h>
 #include <linux/dma-mapping.h>
+#include <linux/clk.h>
+#include <linux/fsl_devices.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
@@ -36,6 +38,12 @@
 #include <mach/mxc_vpu.h>
 
 static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
+	/* AUDMUX */
+	MX6Q_PAD_SD2_DAT0__AUDMUX_AUD4_RXD,
+	MX6Q_PAD_SD2_DAT3__AUDMUX_AUD4_TXC,
+	MX6Q_PAD_SD2_DAT2__AUDMUX_AUD4_TXD,
+	MX6Q_PAD_SD2_DAT1__AUDMUX_AUD4_TXFS,
+
 	/* DISPLAY */
 	MX6Q_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK,
 	MX6Q_PAD_DI0_PIN15__IPU1_DI0_PIN15,
@@ -67,6 +75,11 @@ static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	MX6Q_PAD_DISP0_DAT23__IPU1_DISP0_DAT_23,
 	/* PWM1 */
 	MX6Q_PAD_SD1_CMD__PWM4_PWMO,
+	/* sgtl5000 clock */
+	MX6Q_PAD_GPIO_0__CCM_CLKO,
+       /* I2C1, SGTL5000 */
+        MX6Q_PAD_EIM_D21__I2C1_SCL,     /* GPIO3[21] */
+        MX6Q_PAD_EIM_D28__I2C1_SDA,     /* GPIO3[28] */
 	/* I2C2 */
 	MX6Q_PAD_KEY_COL3__I2C2_SCL,
 	MX6Q_PAD_KEY_ROW3__I2C2_SDA,
@@ -157,6 +170,45 @@ static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
 };
 
+static struct mxc_audio_platform_data mx6_sabrelite_audio_data;
+
+static int mx6_sabrelite_sgtl5000_init(void)
+{
+	struct clk *clko;
+	int rate;
+
+	clko = clk_get(NULL, "clko_clk");
+	if (IS_ERR(clko)) {
+		pr_err("can't get CLKO clock.\n");
+		return PTR_ERR(clko);
+	}
+	rate = clk_round_rate(clko, 16000000);
+	if (rate < 8000000 || rate > 27000000) {
+		pr_err("Error:SGTL5000 mclk freq %d out of range!\n", rate);
+		clk_put(clko);
+		return -1;
+	}
+	mx6_sabrelite_audio_data.sysclk = rate;
+	clk_set_rate(clko, rate);
+	clk_enable(clko);
+	return 0;
+}
+
+static struct mxc_audio_platform_data mx6_sabrelite_audio_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 4,
+	.init = mx6_sabrelite_sgtl5000_init,
+	.hp_gpio = -1,
+};
+
+static struct platform_device mx6_sabrelite_audio_device = {
+	.name = "imx-sgtl5000",
+	.dev = {
+		.platform_data = &mx6_sabrelite_audio_data,
+	},
+};
+
 static void __init imx6q_init_machine(void)
 {
 	if (of_machine_is_compatible("fsl,imx6q-sabrelite")) {
@@ -170,6 +222,9 @@ static void __init imx6q_init_machine(void)
 					imx6q_auxdata_lookup, NULL);
 
 	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
+
+	if (of_machine_is_compatible("fsl,imx6q-sabrelite"))
+		platform_device_register(&mx6_sabrelite_audio_device);
 
 	imx6q_pm_init();
 }
