@@ -119,8 +119,8 @@ static struct mxc_vpu_platform_data vpu_pdata = {
 };
 
 static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
-	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
-	OF_DEV_AUXDATA("fsl,ipuv3", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,imx6q-ipu", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
+	OF_DEV_AUXDATA("fsl,imx6q-ipu", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
 };
 
