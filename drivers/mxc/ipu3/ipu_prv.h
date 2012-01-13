@@ -51,6 +51,7 @@ enum csc_type_t {
 };
 
 struct ipu_soc {
+	u8 hwtype;
 	bool online;
 
 	/*clk*/

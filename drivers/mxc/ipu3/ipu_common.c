@@ -30,6 +30,7 @@
 #include <linux/irq.h>
 #include <linux/irqdesc.h>
 #include <linux/clk.h>
+#include <linux/of_device.h>
 #include <mach/clock.h>
 #include <mach/hardware.h>
 #include <mach/ipu-v3.h>
@@ -44,6 +45,29 @@
 static struct ipu_soc ipu_array[MXC_IPU_MAX_NUM];
 static int ipu_idx;
 int g_ipu_hw_rev;
+
+enum mxc_ipu_hwtype {
+	IMX5_IPU,
+	IMX6_IPU,
+};
+
+static struct platform_device_id mxc_ipu_devtype[] = {
+	{
+		.name = "imx5-ipu",
+		.driver_data = IMX5_IPU,
+	}, {
+		.name = "imx6-ipu",
+		.driver_data = IMX6_IPU,
+	}, {
+		/* sentinel */
+	}
+};
+
+static const struct of_device_id mxc_ipu_dt_ids[] = {
+	{ .compatible = "fsl,imx5-ipu", .data = &mxc_ipu_devtype[IMX5_IPU], },
+	{ .compatible = "fsl,imx6q-ipu", .data = &mxc_ipu_devtype[IMX6_IPU], },
+	{ /* sentinel */ }
+};
 
 /* Static functions */
 static irqreturn_t ipu_irq_handler(int irq, void *desc);
@@ -377,6 +401,8 @@ void _ipu_put(struct ipu_soc *ipu)
 static int __devinit ipu_probe(struct platform_device *pdev)
 {
 	struct imx_ipuv3_platform_data *plat_data = pdev->dev.platform_data;
+	const struct of_device_id *of_id =
+			of_match_device(mxc_ipu_dt_ids, &pdev->dev);
 	struct ipu_soc *ipu;
 	struct resource *res;
 	unsigned long ipu_base;
@@ -390,6 +416,10 @@ static int __devinit ipu_probe(struct platform_device *pdev)
 
 	ipu = &ipu_array[pdev->id];
 	memset(ipu, 0, sizeof(struct ipu_soc));
+
+	if (of_id)
+		pdev->id_entry = of_id->data;
+	ipu->hwtype = pdev->id_entry->driver_data;
 
 	spin_lock_init(&ipu->spin_lock);
 	mutex_init(&ipu->mutex_lock);
@@ -910,7 +940,7 @@ void ipu_uninit_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 	_ipu_lock(ipu);
 
 	if ((ipu->channel_init_mask & (1L << IPU_CHAN_ID(channel))) == 0) {
-		dev_err(ipu->dev, "Channel already uninitialized %d\n",
+		dev_warn(ipu->dev, "Channel already uninitialized %d\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
 		return;
@@ -923,7 +953,7 @@ void ipu_uninit_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 
 	if (idma_is_set(ipu, IDMAC_CHA_EN, in_dma) ||
 	    idma_is_set(ipu, IDMAC_CHA_EN, out_dma)) {
-		dev_err(ipu->dev,
+		dev_warn(ipu->dev,
 			"Channel %d is not disabled, disable first\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
@@ -1253,7 +1283,7 @@ int32_t ipu_init_channel_buffer(struct ipu_soc *ipu, ipu_channel_t channel,
 	if (idma_is_set(ipu, IDMAC_CHA_PRI, dma_chan)) {
 		unsigned reg = IDMAC_CH_LOCK_EN_1;
 		uint32_t value = 0;
-		if (cpu_is_mx53() || cpu_is_mx6q()) {
+		if (ipu->hwtype == IMX5_IPU || ipu->hwtype == IMX6_IPU) {
 			_ipu_ch_param_set_axi_id(ipu, dma_chan, 0);
 			switch (dma_chan) {
 			case 5:
@@ -1321,7 +1351,7 @@ int32_t ipu_init_channel_buffer(struct ipu_soc *ipu, ipu_channel_t channel,
 		} else
 			_ipu_ch_param_set_axi_id(ipu, dma_chan, 1);
 	} else {
-		if (cpu_is_mx6q())
+		if (ipu->hwtype == IMX6_IPU)
 			_ipu_ch_param_set_axi_id(ipu, dma_chan, 1);
 	}
 
@@ -1943,7 +1973,7 @@ int32_t ipu_enable_channel(struct ipu_soc *ipu, ipu_channel_t channel)
 	_ipu_lock(ipu);
 
 	if (ipu->channel_enable_mask & (1L << IPU_CHAN_ID(channel))) {
-		dev_err(ipu->dev, "Warning: channel already enabled %d\n",
+		dev_warn(ipu->dev, "Warning: channel already enabled %d\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
 		return -EACCES;
@@ -2134,7 +2164,7 @@ int32_t ipu_disable_channel(struct ipu_soc *ipu, ipu_channel_t channel, bool wai
 	_ipu_lock(ipu);
 
 	if ((ipu->channel_enable_mask & (1L << IPU_CHAN_ID(channel))) == 0) {
-		dev_err(ipu->dev, "Channel already disabled %d\n",
+		dev_warn(ipu->dev, "Channel already disabled %d\n",
 			IPU_CHAN_ID(channel));
 		_ipu_unlock(ipu);
 		return -EACCES;
@@ -2182,7 +2212,7 @@ int32_t ipu_disable_channel(struct ipu_soc *ipu, ipu_channel_t channel, bool wai
 				msleep(10);
 				timeout -= 10;
 				if (timeout <= 0) {
-					dev_err(ipu->dev, "warning: wait for bg sync eof timeout\n");
+					dev_warn(ipu->dev, "warning: wait for bg sync eof timeout\n");
 					break;
 				}
 			}
@@ -2938,11 +2968,6 @@ static int ipu_resume_noirq(struct device *dev)
 static const struct dev_pm_ops mxcipu_pm_ops = {
 	.suspend_noirq = ipu_suspend_noirq,
 	.resume_noirq = ipu_resume_noirq,
-};
-
-static const struct of_device_id mxc_ipu_dt_ids[] = {
-	{ .compatible = "fsl,ipuv3", },
-	{ /* sentinel */ }
 };
 
 /*!
