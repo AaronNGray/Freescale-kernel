@@ -544,8 +544,8 @@
 
 			viim@021bc000 {
 				compatible = "fsl,imx6q-viim";
-				reg = <0x021bc000 0x4000>,
-				      <0x021c0000 0x4000>;
+				reg = <0x02098000 0x4000>,
+				      <0x021bc000 0x4000>;
 				interrupts = <0 21 0x04>;
 			};
 

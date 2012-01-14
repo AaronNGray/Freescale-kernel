@@ -47,7 +47,7 @@ static int mxs_viim_mmap(struct file *file, struct vm_area_struct *vma)
 	if (remap_pfn_range(vma,
 			    vma->vm_start,
 			    iim_reg_base0 >> PAGE_SHIFT,
-			    iim_reg_size0,
+			    size,
 			    vma->vm_page_prot))
 		return -EAGAIN;
 
