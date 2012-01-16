@@ -40,7 +40,7 @@
 #define MX5_USB_UTMI_PHYCTRL1_PLLDIV_SHIFT		0
 
 struct mxc_usbh_platform_data {
-	int (*init)(struct platform_device *pdev);
+	int (*init)(struct platform_device *pdev, void __iomem *hcd);
 	int (*exit)(struct platform_device *pdev);
 
 	unsigned int		 portsc;

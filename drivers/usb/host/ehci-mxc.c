@@ -195,7 +195,7 @@ static int ehci_mxc_drv_probe(struct platform_device *pdev)
 
 	/* call platform specific init function */
 	if (pdata->init) {
-		ret = pdata->init(pdev);
+		ret = pdata->init(pdev, hcd->regs);
 		if (ret) {
 			dev_err(dev, "platform init failed\n");
 			goto err_init;
@@ -332,11 +332,17 @@ static void ehci_mxc_drv_shutdown(struct platform_device *pdev)
 
 MODULE_ALIAS("platform:mxc-ehci");
 
+static const struct of_device_id ehci_mxc_dt_ids[] = {
+	{ .compatible = "fsl,ehci-mxc", },
+	{ /* sentinel */ }
+};
+
 static struct platform_driver ehci_mxc_driver = {
 	.probe = ehci_mxc_drv_probe,
 	.remove = __exit_p(ehci_mxc_drv_remove),
 	.shutdown = ehci_mxc_drv_shutdown,
 	.driver = {
 		   .name = "mxc-ehci",
+		   .of_match_table = ehci_mxc_dt_ids,
 	},
 };

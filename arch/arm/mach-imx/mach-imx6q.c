@@ -97,6 +97,10 @@ static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 	/* GPIO */
 	MX6Q_PAD_NANDF_D0__GPIO_2_0,
 	MX6Q_PAD_EIM_D23__GPIO_3_23,
+	 /* reset pin for usb hub */
+	MX6Q_PAD_GPIO_17__GPIO_7_12,
+	/* USB OTG power pin */
+	MX6Q_PAD_EIM_D22__GPIO_3_22
 };
 
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
@@ -176,12 +180,19 @@ static struct viv_gpu_platform_data gpu_pdata = {
 	.reserved_mem_size = SZ_128M,
 };
 
+extern struct mxc_usbh_platform_data imx6q_usbh1_pdata;
+extern struct mxc_usbh_platform_data imx6q_usbdr_pdata;
+void imx6q_usbh1_pm_init(void);
+void imx6q_usbdr_pm_init(void);
+
 static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,imx6q-ipu", MX6Q_IPU1_BASE_ADDR, "imx-ipuv3.0", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,imx6q-ipu", MX6Q_IPU2_BASE_ADDR, "imx-ipuv3.1", &ipuv3_pdata),
 	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
 	OF_DEV_AUXDATA("viv,galcore", MX6Q_GPU_3D_BASE_ADDR, "galcore", &gpu_pdata),
 	OF_DEV_AUXDATA("fsl,imx6q-ahci", MX6Q_SATA_BASE_ADDR, "imx6q-ahci", &imx_sata_pdata),
+	OF_DEV_AUXDATA("fsl,ehci-mxc", MX6Q_USB_OTG_BASE_ADDR, "ehci-mxc.0", &imx6q_usbdr_pdata),
+	OF_DEV_AUXDATA("fsl,ehci-mxc", MX6Q_USB_H1_BASE_ADDR, "ehci-mxc.1", &imx6q_usbh1_pdata),
 };
 
 static struct mxc_audio_platform_data mx6_sabrelite_audio_data;
@@ -241,6 +252,8 @@ static void __init imx6q_init_machine(void)
 		platform_device_register(&mx6_sabrelite_audio_device);
 
 	imx6q_pm_init();
+	imx6q_usbh1_pm_init();
+	imx6q_usbdr_pm_init();
 }
 
 static struct map_desc imx_mx6q_iomux_desc[] = {
@@ -248,6 +261,24 @@ static struct map_desc imx_mx6q_iomux_desc[] = {
 		.virtual	= MX6Q_IO_P2V(MX6Q_IOMUXC_BASE_ADDR),
 		.pfn		= __phys_to_pfn(MX6Q_IOMUXC_BASE_ADDR),
 		.length		= MX6Q_IOMUXC_SIZE,
+		.type		= MT_DEVICE,
+	},
+	{
+		.virtual	= MX6Q_IO_P2V(MX6Q_USB_PHY1_BASE_ADDR),
+		.pfn		= __phys_to_pfn(MX6Q_USB_PHY1_BASE_ADDR),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	},
+	{
+		.virtual	= MX6Q_IO_P2V(MX6Q_USB_PHY2_BASE_ADDR),
+		.pfn		= __phys_to_pfn(MX6Q_USB_PHY2_BASE_ADDR),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	},
+	{
+		.virtual	= MX6Q_IO_P2V(MX6Q_USB_OTGCTRL_BASE_ADDR),
+		.pfn		= __phys_to_pfn(MX6Q_USB_OTGCTRL_BASE_ADDR),
+		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	},
 };

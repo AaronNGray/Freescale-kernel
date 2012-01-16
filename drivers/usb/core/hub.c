@@ -29,7 +29,10 @@
 #include <asm/byteorder.h>
 
 #include "usb.h"
-
+#define MX6_USB_HOST_HACK
+#ifdef MX6_USB_HOST_HACK
+extern void fsl_platform_set_usb_phy_dis(bool enable);
+#endif
 /* if we are in debug mode, always announce new devices */
 #ifdef DEBUG
 #ifndef CONFIG_USB_ANNOUNCE_NEW_DEVICES
@@ -3067,6 +3070,15 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 	}
 	if (retval)
 		goto fail;
+#ifdef MX6_USB_HOST_HACK
+	{	/*Must enable HOSTDISCONDETECT after second reset*/
+		if ((port1 == 1) && (udev->level == 1)) {
+			if (udev->speed == USB_SPEED_HIGH) {
+				fsl_platform_set_usb_phy_dis(1);
+			}
+		}
+	}
+#endif
 
 	if (udev->descriptor.bMaxPacketSize0 == 0xff ||
 			udev->speed == USB_SPEED_SUPER)
@@ -3210,6 +3222,17 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		set_port_led(hub, port1, HUB_LED_AUTO);
 		hub->indicator[port1-1] = INDICATOR_AUTO;
 	}
+
+#ifdef MX6_USB_HOST_HACK
+	{
+		if ((port1 == 1) && (hdev->level == 0)) {
+			if (!(portstatus&USB_PORT_STAT_CONNECTION)) {
+				/* Must clear HOSTDISCONDETECT when disconnect*/
+				fsl_platform_set_usb_phy_dis(0);
+			}
+		}
+	}
+#endif
 
 #ifdef	CONFIG_USB_OTG
 	/* during HNP, don't repeat the debounce */

@@ -1900,7 +1900,7 @@ DEF_CLK(ssi2_clk,	  CCGR5, CG10, &pll3_pfd_508m,	  NULL);
 DEF_CLK(ssi3_clk,	  CCGR5, CG11, &pll3_pfd_508m,	  NULL);
 DEF_CLK(uart_serial_clk,  CCGR5, CG13, &pll3_usb_otg,	  NULL);
 DEF_CLK(uart_clk,	  CCGR5, CG12, &pll3_80m,	  &uart_serial_clk);
-DEF_CLK(usboh3_clk,	  CCGR6, CG0,  &ipg_clk,	  NULL);
+DEF_CLK(usb_ahb,	  CCGR6, CG0,  &ahb_clk,	  NULL);
 DEF_CLK(usdhc1_clk,	  CCGR6, CG1,  &pll2_pfd_400m,	  NULL);
 DEF_CLK(usdhc2_clk,	  CCGR6, CG2,  &pll2_pfd_400m,	  NULL);
 DEF_CLK(usdhc3_clk,	  CCGR6, CG3,  &pll2_pfd_400m,	  NULL);
@@ -2086,7 +2086,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("2088000.pwm", NULL, pwm3_clk),
 	_REGISTER_CLOCK("208c000.pwm", NULL, pwm4_clk),
 	_REGISTER_CLOCK(NULL, "gpmi_io_clk", gpmi_io_clk),
-	_REGISTER_CLOCK(NULL, "usboh3_clk", usboh3_clk),
+	_REGISTER_CLOCK(NULL, "usb_ahb", usb_ahb),
+	_REGISTER_CLOCK(NULL, "usb", dummy_clk),
 	_REGISTER_CLOCK("imx6q-ahci", "ahci", sata_clk[0]),
 	_REGISTER_CLOCK("imx6q-ahci", "ahci_phy", ahci_phy_clk),
 	_REGISTER_CLOCK("imx6q-ahci", "ahci_dma", ahci_dma_clk),
