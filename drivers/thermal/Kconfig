@@ -29,3 +29,9 @@ config CPU_THERMAL
 	  This will be useful for platforms using the generic thermal interface
 	  and not the ACPI interface.
 	  If you want this support, you should say Y or M here.
+
+config IMX6Q_THERMAL
+	bool "IMX6Q Thermal interface support"
+	depends on THERMAL && CPU_THERMAL
+	help
+	  Adds thermal management for IMX6Q.
