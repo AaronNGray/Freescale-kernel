@@ -18,7 +18,6 @@
  *
  * @ingroup IPU
  */
-
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/errno.h>
@@ -1239,8 +1238,12 @@ int32_t ipu_init_sync_panel(struct ipu_soc *ipu, int disp, uint32_t pixel_clk,
 				dev_warn(ipu->dev,
 					"ext di clk already in use, go back to internal clk\n");
 			else {
+				/* pll -> di_pre_clk -> di_clk */
+				struct clk *di_pre_clk, *di_pre_clk_parent;
+				di_pre_clk = di_parent;
+				di_pre_clk_parent = clk_get_parent(di_pre_clk);
 				rounded_pixel_clk = pixel_clk * 2;
-				rounded_parent_clk = clk_round_rate(di_parent,
+				rounded_parent_clk = clk_round_rate(di_pre_clk_parent,
 							rounded_pixel_clk);
 				while (rounded_pixel_clk < rounded_parent_clk) {
 					/* the max divider from parent to di is 8 */
@@ -1249,10 +1252,10 @@ int32_t ipu_init_sync_panel(struct ipu_soc *ipu, int disp, uint32_t pixel_clk,
 					else
 						rounded_pixel_clk *= 2;
 				}
-				clk_set_rate(di_parent, rounded_pixel_clk);
+				clk_set_rate(di_pre_clk_parent, rounded_pixel_clk);
 				rounded_pixel_clk =
-					clk_round_rate(ipu->di_clk[disp], pixel_clk);
-				clk_set_rate(ipu->di_clk[disp], rounded_pixel_clk);
+					clk_round_rate(di_pre_clk, pixel_clk);
+				clk_set_rate(di_pre_clk, rounded_pixel_clk);
 				clk_set_parent(&ipu->pixel_clk[disp], ipu->di_clk[disp]);
 			}
 		}
