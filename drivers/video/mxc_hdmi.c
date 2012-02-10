@@ -26,7 +26,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
@@ -179,6 +178,8 @@ struct mxc_hdmi {
 };
 
 struct i2c_client *hdmi_i2c;
+
+static bool hdmi_inited;
 
 extern const struct fb_videomode mxc_cea_mode[64];
 
@@ -1693,6 +1694,21 @@ static void mxc_hdmi_cable_connected(struct mxc_hdmi *hdmi)
 	dev_dbg(&hdmi->pdev->dev, "%s exit\n", __func__);
 }
 
+static int mxc_hdmi_power_on(struct mxc_dispdrv_handle *disp)
+{
+	struct mxc_hdmi *hdmi = mxc_dispdrv_getdata(disp);
+	if (hdmi->fb_reg && hdmi->cable_plugin)
+		mxc_hdmi_phy_init(hdmi);
+	return 0;
+}
+
+static int mxc_hdmi_power_off(struct mxc_dispdrv_handle *disp)
+{
+	struct mxc_hdmi *hdmi = mxc_dispdrv_getdata(disp);
+	mxc_hdmi_phy_disable(hdmi);
+	return 0;
+}
+
 static void mxc_hdmi_cable_disconnected(struct mxc_hdmi *hdmi)
 {
 	dev_dbg(&hdmi->pdev->dev, "%s\n", __func__);
@@ -2084,6 +2100,13 @@ static int mxc_hdmi_disp_init(struct mxc_dispdrv_handle *disp,
 
 	dev_dbg(&hdmi->pdev->dev, "%s\n", __func__);
 
+	/* Check hdmi disp init once */
+	if (hdmi_inited) {
+		dev_err(&hdmi->pdev->dev,
+				"Error only one HDMI output support now!\n");
+		return -1;
+	}
+
 	if (!plat || irq < 0)
 		return -ENODEV;
 
@@ -2208,6 +2231,8 @@ static int mxc_hdmi_disp_init(struct mxc_dispdrv_handle *disp,
 
 	dev_dbg(&hdmi->pdev->dev, "%s exit\n", __func__);
 
+	hdmi_inited = true;
+
 	return ret;
 
 efbclient:
@@ -2250,6 +2275,8 @@ static void mxc_hdmi_disp_deinit(struct mxc_dispdrv_handle *disp)
 
 	platform_device_unregister(hdmi->pdev);
 
+	hdmi_inited = false;
+
 	kfree(hdmi);
 }
 
@@ -2257,6 +2284,8 @@ static struct mxc_dispdrv_driver mxc_hdmi_drv = {
 	.name	= DISPDRV_HDMI,
 	.init	= mxc_hdmi_disp_init,
 	.deinit	= mxc_hdmi_disp_deinit,
+	.enable = mxc_hdmi_power_on,
+	.disable = mxc_hdmi_power_off,
 };
 
 static int __devinit mxc_hdmi_probe(struct platform_device *pdev)
@@ -2284,6 +2313,8 @@ static int __devinit mxc_hdmi_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto ecore;
 	}
+
+	hdmi_inited = false;
 
 	hdmi->disp_mxc_hdmi = mxc_dispdrv_register(&mxc_hdmi_drv);
 	if (IS_ERR(hdmi->disp_mxc_hdmi)) {
