@@ -12,6 +12,7 @@ Optional properties:
 - fsl,card-wired : Indicate the card is wired to host permanently
 - fsl,cd-internal : Indicate to use controller internal card detection
 - fsl,wp-internal : Indicate to use controller internal write protection
+- fsl,mmc-pm-keep-pwr : preserve card power during suspend
 - cd-gpios : Specify GPIOs for card detection
 - wp-gpios : Specify GPIOs for write protection
 

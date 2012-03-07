@@ -33,6 +33,7 @@ enum cd_types {
  * @wp_type:	type of write_protect method (see wp_types enum above)
  * @cd_type:	type of card_detect method (see cd_types enum above)
  * @vdd_180:	1.8V VDD supported
+ * @pm_keep_pwr:	preserve card power during suspend
  */
 
 struct esdhc_platform_data {
@@ -41,5 +42,6 @@ struct esdhc_platform_data {
 	enum wp_types wp_type;
 	enum cd_types cd_type;
 	int vdd_180;
+	int pm_keep_pwr;
 };
 #endif /* __ASM_ARCH_IMX_ESDHC_H */

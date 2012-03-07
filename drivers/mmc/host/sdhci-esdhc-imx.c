@@ -466,6 +466,9 @@ sdhci_esdhc_imx_probe_dt(struct platform_device *pdev,
 
 	if (of_get_property(np, "support-vdd-180", NULL))
 		boarddata->vdd_180 = 1;
+
+	if (of_get_property(np, "mmc-pm-keep-pwr", NULL))
+		boarddata->pm_keep_pwr = 1;
 	return 0;
 }
 #else
@@ -578,6 +581,8 @@ static int __devinit sdhci_esdhc_imx_probe(struct platform_device *pdev)
 		host->caps = readl(host->ioaddr + SDHCI_CAPABILITIES);
 		if (!boarddata->vdd_180)
 			host->caps &= ~SDHCI_CAN_VDD_180;
+		if (boarddata->pm_keep_pwr)
+			host->mmc->pm_flags |= MMC_PM_KEEP_POWER;
 	}
 
 	/* card_detect */
