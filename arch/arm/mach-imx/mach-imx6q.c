@@ -353,7 +353,7 @@ static void __init imx6q_sabrelite_reserve(void)
 
 	if (gpu_pdata.reserved_mem_size) {
 		phys = memblock_alloc_base(gpu_pdata.reserved_mem_size,
-					   SZ_4K, SZ_2G);
+					   SZ_4K, SZ_1G);
 		memblock_free(phys, gpu_pdata.reserved_mem_size);
 		memblock_remove(phys, gpu_pdata.reserved_mem_size);
 		gpu_pdata.reserved_mem_base = phys;
