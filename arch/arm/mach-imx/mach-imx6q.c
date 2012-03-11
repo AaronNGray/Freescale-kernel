@@ -106,6 +106,9 @@ static iomux_v3_cfg_t imx6q_sabrelite_pads[] = {
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
 {
+       /* prefer master mode, disable 1000 Base-T capable */
+        phy_write(phydev, 0x9, 0x1c00);
+
 	/* min rx data delay */
 	phy_write(phydev, 0x0b, 0x8105);
 	phy_write(phydev, 0x0c, 0x0000);
