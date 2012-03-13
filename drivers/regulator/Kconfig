@@ -334,5 +334,13 @@ config REGULATOR_DA9052
 	  Say y here to support the BUCKs and LDOs regulators found on
 	  Dialog Semiconductor DA9052 PMIC.
 
+config REGULATOR_ANATOP
+	tristate "Freescale i.MX on-chip ANATOP LDO regulators"
+	depends on MFD_ANATOP
+	help
+	  Say y here to support Freescale i.MX on-chip ANATOP LDOs
+	  regulators. It is recommended that this option be
+	  enabled on i.MX6 platform.
+
 endif
 
