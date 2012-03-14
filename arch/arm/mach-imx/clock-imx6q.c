@@ -554,6 +554,18 @@ static int pll1_sys_set_rate(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
+static unsigned long pll1_sys_round_rate(struct clk *clk, unsigned long rate)
+{
+	u32 div;
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+
+	rate = rate < FREQ_650M ? FREQ_650M : rate;
+	rate = rate > FREQ_1300M ? FREQ_1300M : rate;
+
+	div = rate * 2 / parent_rate;
+	return parent_rate * div / 2;
+}
+
 static unsigned long pll8_enet_get_rate(struct clk *clk)
 {
 	u32 div = (readl_relaxed(PLL8_ENET) & BM_PLL_ENET_DIV_SELECT) >>
@@ -602,6 +614,20 @@ static int pll8_enet_set_rate(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
+static unsigned long pll8_enet_round_rate(struct clk *clk, unsigned long rate)
+{
+	if (rate >= 125000000)
+		rate = 125000000;
+	else if (rate >= 100000000)
+		rate = 100000000;
+	else if (rate >= 50000000)
+		rate = 50000000;
+	else
+		rate = 25000000;
+	return rate;
+}
+
+
 static unsigned long pll_av_get_rate(struct clk *clk)
 {
 	void __iomem *reg = (clk == &pll4_audio) ? PLL4_AUDIO : PLL5_VIDEO;
@@ -639,6 +665,25 @@ static int pll_av_set_rate(struct clk *clk, unsigned long rate)
 	writel_relaxed(mfd, reg + PLL_DENOM_OFFSET);
 
 	return 0;
+}
+
+static unsigned long pll_av_round_rate(struct clk *clk, unsigned long rate)
+{
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+	u32 div;
+	u32 mfn, mfd = 1000000;
+	s64 temp64;
+
+	rate = rate < FREQ_650M ? FREQ_650M : rate;
+	rate = rate > FREQ_1300M ? FREQ_1300M : rate;
+
+	div = rate / parent_rate;
+	temp64 = (u64) (parent_rate - (div * parent_rate));
+        temp64 *= mfd;
+        do_div(temp64, parent_rate);
+        mfn = temp64;
+
+        return (parent_rate * div) + ((parent_rate / mfd) * mfn);
 }
 
 static void __iomem *pll_get_div_reg_bit(struct clk *clk, u32 *bp, u32 *bm)
@@ -697,18 +742,33 @@ static int pll_set_rate(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
-#define pll2_bus_get_rate	pll_get_rate
-#define pll2_bus_set_rate	pll_set_rate
-#define pll3_usb_otg_get_rate	pll_get_rate
-#define pll3_usb_otg_set_rate	pll_set_rate
-#define pll7_usb_host_get_rate	pll_get_rate
-#define pll7_usb_host_set_rate	pll_set_rate
-#define pll4_audio_get_rate	pll_av_get_rate
-#define pll4_audio_set_rate	pll_av_set_rate
-#define pll5_video_get_rate	pll_av_get_rate
-#define pll5_video_set_rate	pll_av_set_rate
-#define pll6_mlb_get_rate	NULL
-#define pll6_mlb_set_rate	NULL
+static unsigned long pll_round_rate(struct clk *clk, unsigned long rate)
+{
+	if (rate >= FREQ_528M)
+		rate = FREQ_528M;
+	else
+		rate = FREQ_480M;
+	return rate;
+}
+
+#define pll2_bus_get_rate		pll_get_rate
+#define pll2_bus_set_rate		pll_set_rate
+#define pll2_bus_round_rate		pll_round_rate
+#define pll3_usb_otg_get_rate		pll_get_rate
+#define pll3_usb_otg_set_rate		pll_set_rate
+#define pll3_usb_otg_round_rate		pll_round_rate
+#define pll7_usb_host_get_rate		pll_get_rate
+#define pll7_usb_host_set_rate		pll_set_rate
+#define pll7_usb_host_round_rate	pll_round_rate
+#define pll4_audio_get_rate		pll_av_get_rate
+#define pll4_audio_set_rate		pll_av_set_rate
+#define pll4_audio_round_rate		pll_av_round_rate
+#define pll5_video_get_rate		pll_av_get_rate
+#define pll5_video_set_rate		pll_av_set_rate
+#define pll5_video_round_rate		pll_av_round_rate
+#define pll6_mlb_get_rate		NULL
+#define pll6_mlb_set_rate		NULL
+#define pll6_mlb_round_rate		NULL
 
 #define DEF_PLL(name)					\
 	static struct clk name = {			\
@@ -717,6 +777,7 @@ static int pll_set_rate(struct clk *clk, unsigned long rate)
 		.disable	= pll_disable,		\
 		.get_rate	= name##_get_rate,	\
 		.set_rate	= name##_set_rate,	\
+		.round_rate	= name##_round_rate,	\
 		.parent		= &osc_clk,		\
 	}
 
