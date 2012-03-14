@@ -40,8 +40,8 @@ static struct snd_soc_dai_link imx_hdmi_dai_link = {
 	.name = "IMX HDMI TX",
 	.stream_name = "IMX HDMI TX",
 	.codec_dai_name = "mxc-hdmi-soc",
-	.codec_name = "mxc_hdmi_soc.0",
-	.cpu_dai_name = "imx-hdmi-soc-dai.0",
+	.codec_name = "mxc_hdmi_soc",
+	.cpu_dai_name = "imx-hdmi-soc-dai",
 	.platform_name = "imx-hdmi-soc-audio.0",
 };
 

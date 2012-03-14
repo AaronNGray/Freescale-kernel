@@ -534,6 +534,8 @@ static int mxc_hdmi_core_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret = 0;
 	struct platform_device_info pdevinfo_hdmi_v;
+	struct platform_device_info pdevinfo_hdmi_codec;
+	struct platform_device_info pdevinfo_hdmi_dai;
 
 #ifdef DEBUG
 	overflow_lo = false;
@@ -641,6 +643,26 @@ static int mxc_hdmi_core_probe(struct platform_device *pdev)
 	pdevinfo_hdmi_v.dma_mask = DMA_BIT_MASK(32);
 	pdevinfo_hdmi_v.parent = &pdev->dev;
 	platform_device_register_full(&pdevinfo_hdmi_v);
+
+	/* register hdmi audio codec */
+	pdevinfo_hdmi_codec.name = "mxc_hdmi_soc";
+	pdevinfo_hdmi_codec.id = pdev->id;
+	pdevinfo_hdmi_codec.res = NULL;
+	pdevinfo_hdmi_codec.num_res = 0;
+	pdevinfo_hdmi_codec.data = NULL;
+	pdevinfo_hdmi_codec.size_data = 0;
+	pdevinfo_hdmi_codec.parent = &pdev->dev;
+	platform_device_register_full(&pdevinfo_hdmi_codec);
+
+	/* register hdmi audio dai */
+	pdevinfo_hdmi_dai.name = "imx-hdmi-soc-dai";
+	pdevinfo_hdmi_dai.id = pdev->id;
+	pdevinfo_hdmi_dai.res = res;
+	pdevinfo_hdmi_dai.num_res = 1;
+	pdevinfo_hdmi_dai.data = NULL;
+	pdevinfo_hdmi_dai.size_data = 0;
+	pdevinfo_hdmi_dai.parent = &pdev->dev;
+	platform_device_register_full(&pdevinfo_hdmi_dai);
 
 	return ret;
 
