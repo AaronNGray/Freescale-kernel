@@ -1862,7 +1862,6 @@ DEF_NG_CLK(periph2_pre_clk,	&pll2_bus);
 DEF_NG_CLK(periph2_clk,		&periph2_pre_clk);
 DEF_NG_CLK(axi_clk,		&periph_clk);
 DEF_NG_CLK(emi_clk,		&axi_clk);
-DEF_NG_CLK(arm_clk,		&pll1_sw_clk);
 DEF_NG_CLK(ahb_clk,		&periph_clk);
 DEF_NG_CLK(ipg_clk,		&ahb_clk);
 DEF_NG_CLK(ipg_perclk,		&ipg_clk);
@@ -1970,6 +1969,82 @@ DEF_CLK(emi_slow_clk,	  CCGR6, CG5,  &axi_clk,	  NULL);
 DEF_CLK(vdo_axi_clk,	  CCGR6, CG6,  &axi_clk,	  NULL);
 DEF_CLK(vpu_clk,	  CCGR6, CG7,  &axi_clk,	  &ocram_clk);
 DEF_CLK_1B(cko1_clk,	  CCOSR, BP_CCOSR_CKO1_EN, &pll2_bus, NULL);
+
+static unsigned long arm_clk_get_rate(struct clk *clk)
+{
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+	u32 reg, div;
+
+	reg = readl_relaxed(CACRR);
+	div = (reg & BM_CACRR_ARM_PODF) >> BP_CACRR_ARM_PODF;
+
+	return parent_rate / (div + 1);
+}
+static int arm_clk_bestdiv(unsigned long rate, unsigned long *prate)
+{
+	u32 i, maxdiv, bestdiv = 0;
+	unsigned long parent_rate, best = 0, now;
+
+	*prate = 0;
+	maxdiv = (BM_CACRR_ARM_PODF >> BP_CACRR_ARM_PODF) + 1;
+	for (i = 1; i <= maxdiv; i++) {
+		int div;
+		parent_rate = clk_round_rate(&pll1_sys, rate * i);
+		div = parent_rate / rate;
+		div = div > maxdiv ? maxdiv : div;
+		div = div < 1 ? 1 : div;
+		now = parent_rate / div;
+
+		if (now <= rate && now >= best) {
+			bestdiv = div;
+			best = now;
+			*prate = parent_rate;
+			if (now == rate)
+				break;
+		}
+	}
+	return bestdiv;
+}
+
+static int arm_clk_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg, div;
+	unsigned long parent_rate;
+	div = arm_clk_bestdiv(rate, &parent_rate);
+
+	if (pll2_pfd_400m.usecount > 0)
+		pll1_sw_clk.set_parent(&pll1_sw_clk, &pll2_pfd_400m);
+	else
+		pll1_sw_clk.set_parent(&pll1_sw_clk, &osc_clk);
+	pll1_sys.disable(&pll1_sys);
+	pll1_sys.set_rate(&pll1_sys, parent_rate);
+	pll1_sys.enable(&pll1_sys);
+	pll1_sw_clk.set_parent(&pll1_sw_clk, &pll1_sys);
+
+	reg = readl_relaxed(CACRR);
+	reg &= ~BM_CACRR_ARM_PODF;
+	reg |= (div - 1) << BP_CACRR_ARM_PODF;
+	writel_relaxed(reg, CACRR);
+
+	return 0;
+}
+
+static unsigned long arm_clk_round_rate(struct clk *clk, unsigned long rate)
+{
+	unsigned long div, parent_rate;
+
+	div = arm_clk_bestdiv(rate, &parent_rate);
+	return parent_rate / div;
+}
+
+static struct clk arm_clk = {
+	__INIT_CLK_DEBUG(arm_clk)
+	.get_rate	= arm_clk_get_rate,
+	.set_rate	= arm_clk_set_rate,
+	.round_rate	= arm_clk_round_rate,
+	.set_parent	= _clk_set_parent,
+	.parent		= &pll1_sw_clk,
+};
 
 static int pcie_clk_enable(struct clk *clk)
 {
