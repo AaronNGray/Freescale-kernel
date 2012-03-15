@@ -70,7 +70,7 @@ void anatop_set_bits(struct anatop *adata, u32 addr, int bit_shift,
 
 	spin_lock(&adata->reglock);
 	val = readl(adata->ioreg + addr) & ~(mask << bit_shift);
-	writel((data << bit_shift) | val, adata->ioreg);
+	writel((data << bit_shift) | val, adata->ioreg + addr);
 	spin_unlock(&adata->reglock);
 }
 EXPORT_SYMBOL(anatop_set_bits);
