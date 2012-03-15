@@ -384,7 +384,7 @@
 				};
 				regulator-vddcore@140 {
 					compatible = "fsl,anatop-regulator";
-					regulator-name = "vddcore";
+					regulator-name = "cpu";
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1300000>;
 					regulator-always-on;
