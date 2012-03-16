@@ -678,7 +678,7 @@ static unsigned long pll_av_round_rate(struct clk *clk, unsigned long rate)
 	rate = rate > FREQ_1300M ? FREQ_1300M : rate;
 
 	div = rate / parent_rate;
-	temp64 = (u64) (parent_rate - (div * parent_rate));
+	temp64 = (u64) (rate - (div * parent_rate));
         temp64 *= mfd;
         do_div(temp64, parent_rate);
         mfn = temp64;
