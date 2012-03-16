@@ -37,6 +37,7 @@
 #include <linux/mxc_asrc.h>
 #include <linux/fsl_devices.h>
 #include <linux/sched.h>
+#include <linux/of.h>
 #include <asm/irq.h>
 #include <asm/memory.h>
 #include <mach/dma.h>
@@ -918,13 +919,13 @@ struct dma_async_tx_descriptor *imx_asrc_dma_config(
 	int ret;
 
 	if (in) {
-		slave_config.direction = DMA_MEM_TO_DEV;
+		slave_config.direction = DMA_TO_DEVICE;
 		slave_config.dst_addr = dma_addr;
 		slave_config.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
 		slave_config.dst_maxburst =
 			ASRC_INPUTFIFO_THRESHOLD * params->channel_nums;
 	} else {
-		slave_config.direction = DMA_DEV_TO_MEM;
+		slave_config.direction = DMA_FROM_DEVICE;
 		slave_config.src_addr = dma_addr;
 		slave_config.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
 		slave_config.src_maxburst =
@@ -1662,8 +1663,21 @@ static int mxc_asrc_probe(struct platform_device *pdev)
 	g_asrc->paddr = res->start;
 	g_asrc->vaddr =
 	    (unsigned long)ioremap(res->start, res->end - res->start + 1);
-	g_asrc->mxc_asrc_data =
-	    (struct imx_asrc_platform_data *)pdev->dev.platform_data;
+
+	if (pdev->dev.of_node) {
+		g_asrc->mxc_asrc_data = kzalloc(sizeof(*g_asrc->mxc_asrc_data),
+						GFP_KERNEL);
+		of_property_read_u32(pdev->dev.of_node, "fsl,channel_bits",
+				&g_asrc->mxc_asrc_data->channel_bits);
+		of_property_read_u32(pdev->dev.of_node, "fsl,clk_map_ver",
+				&g_asrc->mxc_asrc_data->clk_map_ver);
+		g_asrc->mxc_asrc_data->asrc_core_clk =
+					clk_get(NULL, "asrc_clk");
+		g_asrc->mxc_asrc_data->asrc_audio_clk =
+					clk_get(NULL, "asrc_serial_clk");
+	} else
+		g_asrc->mxc_asrc_data =
+		    (struct imx_asrc_platform_data *)pdev->dev.platform_data;
 
 	clk_enable(g_asrc->mxc_asrc_data->asrc_core_clk);
 
@@ -1738,16 +1752,23 @@ static int mxc_asrc_remove(struct platform_device *pdev)
 {
 	int irq = platform_get_irq(pdev, 0);
 	free_irq(irq, NULL);
-	kfree(g_asrc);
 	g_asrc->mxc_asrc_data = NULL;
+	if (pdev->dev.of_node)
+		kfree(g_asrc->mxc_asrc_data);
 	iounmap((unsigned long __iomem *)g_asrc->vaddr);
 	remove_proc_entry("ChSettings", g_asrc->proc_asrc);
 	remove_proc_entry(ASRC_PROC_PATH, NULL);
 	device_destroy(g_asrc->asrc_class, MKDEV(g_asrc->asrc_major, 0));
 	class_destroy(g_asrc->asrc_class);
 	unregister_chrdev(g_asrc->asrc_major, "mxc_asrc");
+	kfree(g_asrc);
 	return 0;
 }
+
+static const struct of_device_id mxc_asrc_dt_ids[] = {
+	{ .compatible = "fsl,imx35-asrc", },
+	{ /* sentinel */ }
+};
 
 /*! mxc asrc driver definition
  *
@@ -1755,6 +1776,7 @@ static int mxc_asrc_remove(struct platform_device *pdev)
 static struct platform_driver mxc_asrc_driver = {
 	.driver = {
 		   .name = "mxc_asrc",
+		   .of_match_table = mxc_asrc_dt_ids,
 		   },
 	.probe = mxc_asrc_probe,
 	.remove = mxc_asrc_remove,

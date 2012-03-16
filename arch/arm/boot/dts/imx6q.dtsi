@@ -209,8 +209,12 @@
 				};
 
 				asrc@02034000 {
+					compatible = "fsl,imx6q-asrc", "fsl,imx35-asrc";
 					reg = <0x02034000 0x4000>;
 					interrupts = <0 50 0x04>;
+					fsl,channel_bits = <4>;
+					fsl,clk_map_ver = <2>;
+					status = "disabled";
 				};
 
 				spba@0203c000 {

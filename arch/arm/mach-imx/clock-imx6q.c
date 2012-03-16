@@ -2212,6 +2212,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "aips_tz1_clk", aips_tz1_clk),
 	_REGISTER_CLOCK(NULL, "aips_tz2_clk", aips_tz2_clk),
 	_REGISTER_CLOCK(NULL, "asrc_clk", asrc_clk),
+	_REGISTER_CLOCK(NULL, "asrc_serial_clk", asrc_serial_clk),
 	_REGISTER_CLOCK(NULL, "can2_clk", can2_clk),
 	_REGISTER_CLOCK(NULL, "hdmi_isfr_clk", hdmi_isfr_clk),
 	_REGISTER_CLOCK(NULL, "iim_clk", iim_clk),
