@@ -35,8 +35,8 @@
 					cs-gpios = <&gpio3 19 0>;
 					status = "okay";
 
-					flash: m25p32@0 {
-						compatible = "st,m25p32", "st,m25p";
+					flash: m25p80@0 {
+						compatible = "st,sst25vf016b";
 						spi-max-frequency = <20000000>;
 						reg = <0>;
 					};
