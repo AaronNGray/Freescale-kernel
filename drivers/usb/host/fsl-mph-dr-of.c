@@ -94,8 +94,7 @@ struct platform_device * __devinit fsl_usb2_device_register(
 	pdev->dev.parent = &ofdev->dev;
 
 	pdev->dev.coherent_dma_mask = ofdev->dev.coherent_dma_mask;
-	pdev->dev.dma_mask = &pdev->archdata.dma_mask;
-	*pdev->dev.dma_mask = *ofdev->dev.dma_mask;
+	pdev->dev.dma_mask = ofdev->dev.dma_mask;
 
 	retval = platform_device_add_data(pdev, pdata, sizeof(*pdata));
 	if (retval)
@@ -141,8 +140,10 @@ static int __devinit fsl_usb2_mph_dr_of_probe(struct platform_device *ofdev)
 	pdata = &data;
 	if (match->data)
 		memcpy(pdata, match->data, sizeof(data));
-	else
+	else if (!match->data && !ofdev->dev.platform_data)
 		memset(pdata, 0, sizeof(data));
+	else if (ofdev->dev.platform_data)
+		pdata = ofdev->dev.platform_data;
 
 	dev_data = get_dr_mode_data(np);
 
@@ -281,6 +282,7 @@ static struct fsl_usb2_platform_data fsl_usb2_mpc8xxx_pd = {
 static const struct of_device_id fsl_usb2_mph_dr_of_match[] = {
 	{ .compatible = "fsl-usb2-mph", .data = &fsl_usb2_mpc8xxx_pd, },
 	{ .compatible = "fsl-usb2-dr", .data = &fsl_usb2_mpc8xxx_pd, },
+	{ .compatible = "fsl,fsl-usb2-dr",},
 #ifdef CONFIG_PPC_MPC512x
 	{ .compatible = "fsl,mpc5121-usb2-dr", .data = &fsl_usb2_mpc5121_pd, },
 #endif

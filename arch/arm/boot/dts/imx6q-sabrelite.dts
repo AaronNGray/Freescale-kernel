@@ -56,12 +56,12 @@
 		};
 
 		aips-bus@02100000 { /* AIPS2 */
-			usbhost@02184000 { /* USB OTG PORT */
+			usb-device@02184000 { /* USB OTG PORT */
 				otg-pwr-gpios = <&gpio2 22 0>;
 				status = "okay";
 			};
 
-			usbhost@02184200 { /* USB Host1 */
+			usb-host@02184200 { /* USB Host1 */
 				hub-reset-gpios = <&gpio6 12 0>;
 				status = "okay";
 			};

@@ -1,6 +1,6 @@
 #include <linux/of_platform.h>
 #include <linux/gpio.h>
-#include <linux/of.h> 
+#include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/workqueue.h>
@@ -483,3 +483,15 @@ struct mxc_usbh_platform_data imx6q_usbh1_pdata = {
 	.init = imx6q_usbh1_init,
 };
 
+/* enable/disable high-speed disconnect detector of phy ctrl */
+void fsl_platform_set_usb_phy_dis(bool enable)
+{
+	void __iomem *phy_regs = IMX_IO_ADDRESS(MX6Q_USB_PHY2_BASE_ADDR);
+	if (enable)
+		__raw_writel(BM_USBPHY_CTRL_ENHOSTDISCONDETECT,  \
+				(phy_regs) + HW_USBPHY_CTRL_SET);
+	else
+		__raw_writel(BM_USBPHY_CTRL_ENHOSTDISCONDETECT, \
+				(phy_regs) + HW_USBPHY_CTRL_CLR);
+}
+EXPORT_SYMBOL(fsl_platform_set_usb_phy_dis);

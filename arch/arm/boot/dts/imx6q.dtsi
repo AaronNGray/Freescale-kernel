@@ -534,29 +534,30 @@
 			aipstz@0217c000 { /* AIPSTZ2 */
 				reg = <0x0217c000 0x4000>;
 			};
-
-			usbhost@02184000 {
-				compatible = "fsl,ehci-mxc";
+			usb-device@02184000 {
+				compatible = "fsl,fsl-usb2-dr";
 				reg = <0x02184000 0x200>;
 				interrupts = <0 43 0x04>;
 				status = "disabled";
+				dr_mode = "peripheral";
+				phy_type = "utmi_wide";
 			};
 
-			usbhost@02184200 { /* USB Host1 */
+			usb-host@02184200 { /* USB Host1 */
 				compatible = "fsl,ehci-mxc";
 				reg = <0x02184200 0x200>;
 				interrupts = <0 40 0x04>;
 				status = "disabled";
 			};
 
-			usbhost@02184400 { /* USB Host2 */
+			usb-host@02184400 { /* USB Host2 */
 				compatible = "fsl,ehci-mxc";
 				reg = <0x02184400 0x200>;
 				interrupts = <0 41 0x04>;
 				status = "disabled";
 			};
 
-			usbhost@02184800 { /* USB Host3 */
+			usb-host@02184800 { /* USB Host3 */
 				compatible = "fsl,ehci-mxc";
 				reg = <0x02184800 0x200>;
 				interrupts = <0 42 0x04>;

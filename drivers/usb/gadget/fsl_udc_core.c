@@ -736,6 +736,9 @@ static void fsl_queue_td(struct fsl_ep *ep, struct fsl_req *req)
 		lastreq = list_entry(ep->queue.prev, struct fsl_req, queue);
 		lastreq->tail->next_td_ptr =
 			cpu_to_hc32(req->head->td_dma & DTD_ADDR_MASK);
+#ifdef CONFIG_ARM_DMA_MEM_BUFFERABLE
+		wmb();
+#endif
 		/* Read prime bit, if 1 goto done */
 		if (fsl_readl(&dr_regs->endpointprime) & bitmask)
 			return;
@@ -2522,6 +2525,7 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	}
 
 	fsl_udc_clk_finalize(pdev);
+
 
 	/* Setup gadget structure */
 	udc_controller->gadget.ops = &fsl_gadget_ops;

@@ -4,6 +4,7 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/workqueue.h>
+#include <linux/fsl_devices.h>
 
 #include <asm/io.h>
 #include <asm/delay.h>
@@ -450,42 +451,15 @@ static int usb_phy_enable(struct mxc_usbh_platform_data *pdata, void __iomem *re
 	return 0;
 }
 
-static int imx6q_usbdr_init(struct platform_device *pdev, void __iomem *regs)
+static int imx6q_usbdr_init(struct platform_device *pdev)
 {
-	int otg_pwr, err;
-
-	otg_pwr = of_get_named_gpio(pdev->dev.of_node, "otg-pwr-gpios", 0);
-	if (otg_pwr < 0) {
-		printk(KERN_ERR "get gpio 'otg-pwr-gpios' fails\n");
-		return -EINVAL;
-	}
-	err = gpio_request_one(otg_pwr, GPIOF_OUT_INIT_LOW, "otg-pwr");
-	if (err) {
-		printk(KERN_ERR "request gpio 'otg-pwr' fails\n");
-		return -EINVAL;
-	}
-	/* Comment below code if OTG is supported */
-	gpio_set_value(otg_pwr, 1);
+	struct fsl_usb2_platform_data *pdata = pdev->dev.platform_data;
 
 	usbdr_internal_phy_clock_gate(true);
-	usb_phy_enable(NULL, regs);
+	usb_phy_enable(NULL, pdata->regs);
 	return 0;
 }
 
-struct mxc_usbh_platform_data imx6q_usbdr_pdata = {
-	.portsc = MXC_EHCI_MODE_UTMI,
+struct fsl_usb2_platform_data imx6q_usbdr_pdata = {
 	.init = imx6q_usbdr_init,
 };
-
-/* enable/disable high-speed disconnect detector of phy ctrl */
-void fsl_platform_set_usb_phy_dis(bool enable)
-{
-	void __iomem *phy_regs = IMX_IO_ADDRESS(MX6Q_USB_PHY1_BASE_ADDR);
-        if (enable)
-                __raw_writel(BM_USBPHY_CTRL_ENHOSTDISCONDETECT,
-                        (phy_regs) + HW_USBPHY_CTRL_SET);
-        else
-                __raw_writel(BM_USBPHY_CTRL_ENHOSTDISCONDETECT,
-                        (phy_regs) + HW_USBPHY_CTRL_CLR);
-}
-EXPORT_SYMBOL(fsl_platform_set_usb_phy_dis);    

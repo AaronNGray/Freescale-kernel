@@ -78,10 +78,6 @@ struct clk;
 struct platform_device;
 
 #ifdef CONFIG_USB_EHCI_ARC
-#include <linux/wait.h>
-#include <linux/mutex.h>
-#include <linux/completion.h>
-
 struct fsl_usb2_wakeup_platform_data;
 
 struct fsl_usb2_platform_data {
@@ -233,6 +229,10 @@ struct fsl_spi_platform_data {
 	void	(*cs_control)(struct spi_device *spi, bool on);
 	u32	sysclk;
 };
+
+#include <linux/wait.h>
+#include <linux/mutex.h>
+#include <linux/completion.h>
 
 struct mxc_iim_platform_data {
 	const s8        *name;

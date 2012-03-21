@@ -17,6 +17,8 @@
 #include <linux/fsl_devices.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/slab.h>
+#include <linux/string.h>
 
 #include <mach/hardware.h>
 
@@ -26,6 +28,14 @@ static struct clk *mxc_usb_clk;
 /* workaround ENGcm09152 for i.MX35 */
 #define USBPHYCTRL_OTGBASE_OFFSET	0x608
 #define USBPHYCTRL_EVDO			(1 << 23)
+static bool clk_is_dummy(struct clk *dummy_clk)
+{
+	int size = sizeof (struct clk *);
+	void *zero_memory_area = kzalloc(size, GFP_KERNEL);
+	if (memcmp(zero_memory_area, (void *)dummy_clk, size) == 0)
+		return true;
+	return false;
+}
 
 int fsl_udc_clk_init(struct platform_device *pdev)
 {
@@ -49,6 +59,10 @@ int fsl_udc_clk_init(struct platform_device *pdev)
 
 	/* make sure USB_CLK is running at 60 MHz +/- 1000 Hz */
 	mxc_usb_clk = clk_get(&pdev->dev, "usb");
+
+	if (clk_is_dummy(mxc_usb_clk))
+		return 0;
+
 	if (IS_ERR(mxc_usb_clk)) {
 		dev_err(&pdev->dev, "clk_get(\"usb\") failed\n");
 		ret = PTR_ERR(mxc_usb_clk);

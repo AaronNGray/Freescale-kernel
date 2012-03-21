@@ -184,7 +184,7 @@ static struct viv_gpu_platform_data gpu_pdata = {
 };
 
 extern struct mxc_usbh_platform_data imx6q_usbh1_pdata;
-extern struct mxc_usbh_platform_data imx6q_usbdr_pdata;
+extern struct fsl_usb2_platform_data imx6q_usbdr_pdata;
 void imx6q_usbh1_pm_init(void);
 void imx6q_usbdr_pm_init(void);
 
@@ -194,7 +194,7 @@ static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	OF_DEV_AUXDATA("fsl,vpu", MX6Q_VPU_BASE_ADDR, "mxc_vpu.0", &vpu_pdata),
 	OF_DEV_AUXDATA("viv,galcore", MX6Q_GPU_3D_BASE_ADDR, "galcore", &gpu_pdata),
 	OF_DEV_AUXDATA("fsl,imx6q-ahci", MX6Q_SATA_BASE_ADDR, "imx6q-ahci", &imx_sata_pdata),
-	OF_DEV_AUXDATA("fsl,ehci-mxc", MX6Q_USB_OTG_BASE_ADDR, "ehci-mxc.0", &imx6q_usbdr_pdata),
+	OF_DEV_AUXDATA("fsl,fsl-usb2-dr", MX6Q_USB_OTG_BASE_ADDR, "fsl-usb2-dr", &imx6q_usbdr_pdata),
 	OF_DEV_AUXDATA("fsl,ehci-mxc", MX6Q_USB_H1_BASE_ADDR, "ehci-mxc.1", &imx6q_usbh1_pdata),
 };
 
