@@ -379,7 +379,7 @@
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1300000>;
 					regulator-always-on;
-					reg = <0x140>;
+					anatop-reg-offset = <0x140>;
 					anatop-vol-bit-shift = <9>;
 					anatop-vol-bit-width = <5>;
 					anatop-min-bit-val = <1>;
@@ -392,7 +392,7 @@
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1300000>;
 					regulator-always-on;
-					reg = <0x140>;
+					anatop-reg-offset = <0x140>;
 					anatop-vol-bit-shift = <0>;
 					anatop-vol-bit-width = <5>;
 					anatop-min-bit-val = <1>;
@@ -406,7 +406,7 @@
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1300000>;
 					regulator-always-on;
-					reg = <0x140>;
+					anatop-reg-offset = <0x140>;
 					anatop-vol-bit-shift = <18>;
 					anatop-vol-bit-width = <5>;
 					anatop-min-bit-val = <1>;
@@ -420,7 +420,7 @@
 					regulator-min-microvolt = <2000000>;
 					regulator-max-microvolt = <2775000>;
 					regulator-always-on;
-					reg = <0x130>;
+					anatop-reg-offset = <0x130>;
 					anatop-vol-bit-shift = <8>;
 					anatop-vol-bit-width = <5>;
 					anatop-min-bit-val = <0>;
@@ -434,7 +434,7 @@
 					regulator-min-microvolt = <800000>;
 					regulator-max-microvolt = <1400000>;
 					regulator-always-on;
-					reg = <0x110>;
+					anatop-reg-offset = <0x110>;
 					anatop-vol-bit-shift = <8>;
 					anatop-vol-bit-width = <5>;
 					anatop-min-bit-val = <4>;
@@ -448,7 +448,7 @@
 					regulator-min-microvolt = <2800000>;
 					regulator-max-microvolt = <3150000>;
 					regulator-always-on;
-					reg = <0x120>;
+					anatop-reg-offset = <0x120>;
 					anatop-vol-bit-shift = <8>;
 					anatop-vol-bit-width = <5>;
 					anatop-min-bit-val = <7>;
