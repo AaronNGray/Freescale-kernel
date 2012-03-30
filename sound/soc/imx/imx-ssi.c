@@ -55,8 +55,7 @@
 
 #define SSI_SACNT_DEFAULT (SSI_SACNT_AC97EN | SSI_SACNT_FV)
 #define IMX_SSI_FORMATS \
-	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
-	SNDRV_PCM_FMTBIT_S24_LE)
+	(SNDRV_PCM_FMTBIT_S16_LE)
 
 static const struct of_device_id imx_ssi_dt_ids[] = {
 	{ .compatible = "fsl,imx1-ssi", },
