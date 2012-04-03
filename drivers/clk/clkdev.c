@@ -19,6 +19,7 @@
 #include <linux/mutex.h>
 #include <linux/clk.h>
 #include <linux/clkdev.h>
+#include <linux/clk-provider.h>
 
 static LIST_HEAD(clocks);
 static DEFINE_MUTEX(clocks_mutex);
@@ -67,6 +68,13 @@ struct clk *clk_get_sys(const char *dev_id, const char *con_id)
 
 	mutex_lock(&clocks_mutex);
 	cl = clk_find(dev_id, con_id);
+#ifdef CONFIG_COMMON_CLK
+	if (cl && cl->clkname && !cl->clk) {
+		cl->clk = __clk_lookup(cl->clkname);
+		if (!cl->clk)
+			return ERR_PTR(-ENOENT);
+	}
+#endif
 	if (cl && !__clk_get(cl->clk))
 		cl = NULL;
 	mutex_unlock(&clocks_mutex);
