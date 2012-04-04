@@ -29,6 +29,9 @@ struct clk *imx_clk_pllv3(enum imx_pllv3_type type, const char *name,
 		char *parent_name, void __iomem *base, u32 gate_mask,
 		u32 div_mask);
 
+struct clk *imx_clk_pfd(const char *name, char *parent_name,
+		void __iomem *reg, u8 idx);
+
 static inline struct clk *imx_clk_fixed(const char *name, int rate)
 {
 	return clk_register_fixed_rate(NULL, name, NULL, CLK_IS_ROOT, rate);
