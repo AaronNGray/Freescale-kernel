@@ -227,6 +227,6 @@ int __init mx25_clocks_init(void)
 
 	clkdev_add_table(lookups, ARRAY_SIZE(lookups));
 
-	mxc_timer_init(NULL, MX25_IO_ADDRESS(MX25_GPT1_BASE_ADDR), 54);
+	mxc_timer_init(MX25_IO_ADDRESS(MX25_GPT1_BASE_ADDR), 54);
 	return 0;
 }

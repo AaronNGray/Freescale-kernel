@@ -246,8 +246,7 @@ int __init mx27_clocks_init(unsigned long fref)
 
 	clkdev_add_table(lookups, ARRAY_SIZE(lookups));
 
-	mxc_timer_init(NULL, MX27_IO_ADDRESS(MX27_GPT1_BASE_ADDR),
-			MX27_INT_GPT1);
+	mxc_timer_init(MX27_IO_ADDRESS(MX27_GPT1_BASE_ADDR), MX27_INT_GPT1);
 
 	clk_prepare_enable(emi_ahb);
 

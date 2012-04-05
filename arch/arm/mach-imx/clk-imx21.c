@@ -167,7 +167,7 @@ int __init mx21_clocks_init(unsigned long lref, unsigned long href)
 
 	clkdev_add_table(lookups, ARRAY_SIZE(lookups));
 
-	mxc_timer_init(NULL, MX21_IO_ADDRESS(MX21_GPT1_BASE_ADDR),
-			MX21_INT_GPT1);
+	mxc_timer_init(MX21_IO_ADDRESS(MX21_GPT1_BASE_ADDR), MX21_INT_GPT1);
+
 	return 0;
 }

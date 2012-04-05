@@ -102,8 +102,7 @@ int __init mx1_clocks_init(unsigned long fref)
 
 	clkdev_add_table(lookups, ARRAY_SIZE(lookups));
 
-	mxc_timer_init(NULL, MX1_IO_ADDRESS(MX1_TIM1_BASE_ADDR),
-			MX1_TIM1_INT);
+	mxc_timer_init(MX1_IO_ADDRESS(MX1_TIM1_BASE_ADDR), MX1_TIM1_INT);
 
 	return 0;
 }

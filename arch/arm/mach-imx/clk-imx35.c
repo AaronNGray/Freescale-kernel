@@ -251,8 +251,7 @@ int __init mx35_clocks_init()
 	epit_timer_init(&epit1_clk,
 			MX35_IO_ADDRESS(MX35_EPIT1_BASE_ADDR), MX35_INT_EPIT1);
 #else
-	mxc_timer_init(NULL, MX35_IO_ADDRESS(MX35_GPT1_BASE_ADDR),
-			MX35_INT_GPT);
+	mxc_timer_init(MX35_IO_ADDRESS(MX35_GPT1_BASE_ADDR), MX35_INT_GPT);
 #endif
 
 	return 0;
