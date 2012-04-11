@@ -19,6 +19,9 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
+#ifdef CONFIG_OF
+#include <linux/regulator/of_regulator.h>
+#endif
 
 #include <linux/mfd/da9052/da9052.h>
 #include <linux/mfd/da9052/reg.h>
@@ -536,6 +539,7 @@ static int __devinit da9052_regulator_probe(struct platform_device *pdev)
 	struct da9052_regulator *regulator;
 	struct da9052 *da9052;
 	struct da9052_pdata *pdata;
+	struct regulator_init_data *initdata = NULL;
 	int ret;
 
 	regulator = devm_kzalloc(&pdev->dev, sizeof(struct da9052_regulator),
@@ -554,9 +558,45 @@ static int __devinit da9052_regulator_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+	if (pdata && pdata->regulators) {
+		initdata = pdata->regulators[pdev->id];
+	} else {
+#ifdef CONFIG_OF
+		struct device_node *nproot = da9052->dev->of_node;
+		struct device_node *np;
+
+		if (!nproot) {
+			ret = -ENODEV;
+			goto err;
+		}
+
+		nproot = of_find_node_by_name(nproot, "regulators");
+		if (!nproot) {
+			ret = -ENODEV;
+			goto err;
+		}
+
+		for (np = of_get_next_child(nproot, NULL);
+		     np != NULL;
+		     np = of_get_next_child(nproot, np)) {
+			if (!of_node_cmp(np->name,
+					 regulator->info->reg_desc.name)) {
+				initdata = of_get_regulator_init_data(
+					&pdev->dev, np);
+				break;
+			}
+		}
+#endif
+	}
+
+	if (!initdata) {
+		dev_err(&pdev->dev, "no initdata\n");
+		ret = -ENODEV;
+		goto err;
+	}
 	regulator->rdev = regulator_register(&regulator->info->reg_desc,
 					     &pdev->dev,
-					     pdata->regulators[pdev->id],
+					     initdata,
 					     regulator, NULL);
 	if (IS_ERR(regulator->rdev)) {
 		dev_err(&pdev->dev, "failed to register regulator %s\n",
