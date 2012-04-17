@@ -25,6 +25,7 @@
 #include <linux/irq.h>
 #include <linux/clockchips.h>
 #include <linux/clk.h>
+#include <linux/err.h>
 
 #include <mach/hardware.h>
 #include <asm/sched_clock.h>
@@ -279,9 +280,22 @@ static int __init mxc_clockevent_init(struct clk *timer_clk)
 	return 0;
 }
 
-void __init mxc_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
+void __init mxc_timer_init(void __iomem *base, int irq)
 {
 	uint32_t tctl_val;
+	struct clk *timer_ipg_clk, *timer_clk;
+
+	if (!timer_clk) {
+		timer_clk = clk_get_sys("imx-gpt.0", "per");
+		if (IS_ERR(timer_clk)) {
+			pr_err("i.MX timer: unable to get clk\n");
+			return;
+		}
+
+		timer_ipg_clk = clk_get_sys("imx-gpt.0", "ipg");
+		if (!IS_ERR(timer_ipg_clk))
+			clk_prepare_enable(timer_ipg_clk);
+	}
 
 	clk_prepare_enable(timer_clk);
 

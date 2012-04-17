@@ -21,6 +21,9 @@ struct clk_lookup {
 	struct list_head	node;
 	const char		*dev_id;
 	const char		*con_id;
+#ifdef CONFIG_COMMON_CLK
+	const char		*clkname;
+#endif
 	struct clk		*clk;
 };
 
