@@ -600,6 +600,17 @@ config MFD_MC13XXX
 	  additional drivers must be enabled in order to use the
 	  functionality of the device.
 
+config MFD_MC34708
+        tristate "Support for Freescale's PMIC MC34708"
+        depends on I2C
+	depends on OF
+        select MFD_CORE
+        help
+          Support for the Freescale's PMIC MC34708
+          This driver provides common support for accessing the device,
+          additional drivers must be enabled in order to use the
+          functionality of the device.
+
 config ABX500_CORE
 	bool "ST-Ericsson ABX500 Mixed Signal Circuit register functions"
 	default y if ARCH_U300 || ARCH_U8500
